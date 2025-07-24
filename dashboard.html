@@ -1,30 +1,16 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8">
+    <link rel="shortcut icon" href="https://img.icons8.com/clouds/100/note.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AnyN0te</title>
     <link rel="shortcut icon" href="https://img.icons8.com/clouds/100/note.png" type="image/x-icon">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="style/dash.css">
-
-</head>
-<body>
-    <div class="navi">
-         <nav>
-            <ul class="items">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="dashboard.html">Dashboard</a></li>
-                <li><a href="post.html">Create Note</a></li>
-                <li><a href="about.html">About</a></li>
-                <i id="ham" class="bi bi-list"></i>
-            </ul>
-        </nav>
-    </div>
-
-    <section class="dashboard">
-        <div class="follower-notes"></div>
-        <div class="others-notes"></div>
-    </section>
-</body>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
