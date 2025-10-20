@@ -13,20 +13,20 @@ export default function Home() {
     <div className="p-8 pb-32">
       
       <header className="mb-8 p-4 bg-white/75 rounded-2xl backdrop-blur-sm">
-        <h1 className="text-3xl font-bold text-center text-[#333]">Anonymous Note</h1>
+        <h1 className="text-3xl font-bold text-center text-[#333]">Anyn0te</h1>
       </header>
 
       <main className="space-y-12">
         <NoteSection 
-          title="Following" 
+          title="Adminotes" 
           notes={followingNotes} 
-          expandToPage="/follower" 
+          expandToPage="/adminote" 
         />
         
         <NoteSection 
-          title="New people" 
+          title="Global Notes" 
           notes={newPeopleNotes} 
-          expandToPage="/Notes" 
+          expandToPage="/notes" 
         />
       </main>
 

@@ -81,7 +81,6 @@ export default function CreateNotePage() {
         const result = await response.json();
 
         if (response.ok) {
-            alert('Note posted anonymously! Redirecting to home.');
             router.push('/'); 
             
             setTitle('');
@@ -125,7 +124,7 @@ export default function CreateNotePage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="A concise summary of your thought..."
+              placeholder="Do a thought need a title?..."
               maxLength={100}
               className="p-3 rounded-xl border-2 border-[#4a2f88]/50 focus:border-[#4a2f88] focus:outline-none bg-[#f0f0f0dc] text-[#333] placeholder-[#535353] font-sans"
             />
@@ -133,13 +132,13 @@ export default function CreateNotePage() {
 
           <div className="flex flex-col">
             <label htmlFor="content" className="text-lg font-semibold text-[#333] mb-2">
-              Your Anonymous Note
+              Note
             </label>
             <textarea
               id="content"
               value={content}
               onChange={handleContentChange}
-              placeholder="Share your personal thoughts here..."
+              placeholder="Hmmm....title wasn't enough let's me explain more!"
               required
               rows={8}
               className={`p-3 rounded-xl border-2 ${wordCount > MAX_WORD_COUNT ? 'border-red-500' : 'border-[#4a2f88]/50'} focus:border-[#4a2f88] focus:outline-none bg-[#f0f0f0dc] text-[#333] placeholder-[#535353] resize-y font-sans`}
