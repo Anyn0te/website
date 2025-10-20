@@ -58,3 +58,13 @@ Documenting all major features and fixes implemented in the project thus far.
 | **Fix**      | Enabled automatic page refresh on the home page after a successful post using `revalidatePath`.                                                                           |
 | **Fix**      | Improved visual consistency: Fixed note card text overflow, ensured floating navigation bar is fully blurred beneath the modal, and adjusted the expand arrow size/shape. |
 | **Fix**      | Added redirect from the Create Note Page to the Home Page upon successful post submission.                                                                                |
+
+## Date 21-10-25
+
+### 2310c22 - make mediaUrl optional in Note interface -[tillua467]-
+
+### 93fff20 - add a new settings tab in the navbar -[tillua467]-
+
+### af32639 - redirect user to the notes section when clicked expand more -[tillua467]-
+
+### 564f6eb - Update branding, navigation labels, and improve note creation UX -[tillua467]-
