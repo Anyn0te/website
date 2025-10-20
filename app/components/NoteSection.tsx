@@ -29,7 +29,7 @@ const NoteSection: React.FC<NoteSectionProps> = ({ title, notes, expandToPage })
     if (canShowMore) {
       setVisibleCount(notes.length); 
     } else {
-      alert(`Feature: Navigate to ${expandToPage} for all notes!`);
+      window.location.href = '/notes';
     }
   };
 
