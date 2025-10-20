@@ -8,7 +8,7 @@ interface Note {
     title: string;
     content: string;
     media: 'image' | 'audio' | null;
-    mediaUrl: string | null; 
+    mediaUrl ?: string | null; 
 }
 
 interface ExpandedNoteModalProps {
