@@ -41,7 +41,12 @@ export default function NavBar() {
           </li>
           <li className="nav-item">
             <Link href="/about" onClick={handleLinkClick}>
-              About
+              About Us
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link href="/settings" onClick={handleLinkClick}>
+              Settings
             </Link>
           </li>
         </ul>
