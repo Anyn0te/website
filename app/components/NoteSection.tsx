@@ -3,21 +3,14 @@
 import React, { useState } from 'react';
 import NoteCard from './NoteCard';
 import ExpandedNoteModal from './ExpandedNoteModal'; 
-interface Note {
-    id: number;
-    title: string;
-    content: string;
-    media: 'image' | 'audio' | null;
-    isFollowing?: boolean; 
-}
+import { Note } from '../data/Note';
 
 interface NoteSectionProps {
   title: string;
   notes: Note[];
-  expandToPage: string; 
 }
 
-const NoteSection: React.FC<NoteSectionProps> = ({ title, notes, expandToPage }) => {
+const NoteSection: React.FC<NoteSectionProps> = ({ title, notes }) => {
   const initialCount = 5; 
   const [visibleCount, setVisibleCount] = useState(initialCount);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);

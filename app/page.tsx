@@ -20,13 +20,11 @@ export default function Home() {
         <NoteSection 
           title="Adminotes" 
           notes={followingNotes} 
-          expandToPage="/adminote" 
         />
         
         <NoteSection 
           title="Global Notes" 
           notes={newPeopleNotes} 
-          expandToPage="/notes" 
         />
       </main>
 

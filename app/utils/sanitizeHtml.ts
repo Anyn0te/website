@@ -9,8 +9,8 @@ if (typeof window !== 'undefined') {
   purifyInstance = DOMPurify(window);
 } else {
   purifyInstance = {
-    sanitize: (s: string) => s 
-  } as any;
+    sanitize: (s: string | Node) => (typeof s === 'string' ? s : ''),
+  } as DOMPurifyI;
 }
 
 

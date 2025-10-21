@@ -5,17 +5,28 @@ import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache'; 
 import { Note } from '../../data/Note'; 
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '20mb',
+    },
+  },
+};
+
+const MAX_FILE_SIZE = 20 * 1024 * 1024; 
 const MAX_WORD_COUNT = 1000; 
 
 const DATA_FILE_PATH = path.join(process.cwd(), 'app', 'data', 'mockNotes.json');
 const MEDIA_DIR = path.join(process.cwd(), 'public', 'media');
 
 const getMediaExtension = (mimeType: string): string | null => {
-    if (mimeType.includes('image/jpeg') || mimeType.includes('image/jpg')) return 'jpg';
+    if (mimeType.includes('image/jpeg') || mimeType.includes('image/jpg')) return 'jpeg';
     if (mimeType.includes('image/png')) return 'png';
-    if (mimeType.includes('audio/mpeg') || mimeType.includes('audio/mp3')) return 'mp3';    
-    return null; 
+    if (mimeType.includes('audio/mpeg')) return 'mp3';
+    if (mimeType.includes('audio/mp3')) return 'mp3';
+    if (mimeType.includes('audio/wav')) return 'wav';
+    if (mimeType.includes('audio/ogg')) return 'ogg';
+    return null;
 };
 
 const countWords = (text: string): number => {
@@ -27,7 +38,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const title = formData.get('title') as string || 'Untitled Note'; 
     const content = formData.get('content') as string;
-    const mediaFile = formData.get('mediaFile') as File | null; 
+    const mediaFiles = formData.getAll('mediaFiles') as File[];
     
     const wordCount = countWords(content);
 
@@ -38,38 +49,43 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Note content exceeds the ${MAX_WORD_COUNT} word limit.` }, { status: 400 });
     }
 
-    let mediaPath: string | null = null;
-    let newNoteMedia: Note['media'] = null;
+    const mediaPaths: (string | null)[] = [];
+    const newNoteMedia: ('image' | 'audio' | null)[] = [];
 
-    if (mediaFile && mediaFile.size > 0) {
+    if (mediaFiles && mediaFiles.length > 0) {
+      for (const mediaFile of mediaFiles) {
         if (mediaFile.size > MAX_FILE_SIZE) {
-            return NextResponse.json({ error: 'File size exceeds the 5MB limit.' }, { status: 400 });
+            return NextResponse.json({ error: 'File size exceeds the 20MB limit.' }, { status: 400 });
         }
         
         const fileExtension = getMediaExtension(mediaFile.type);
         if (fileExtension === null) {
-             return NextResponse.json({ error: 'Invalid media file type or extension. Only JPG, PNG, and MP3 are allowed.' }, { status: 400 });
+             return NextResponse.json({ error: 'Invalid media file type or extension. Only JPG, PNG, MP3, WAV, and OGG are allowed.' }, { status: 400 });
         }
         
         const fileBuffer = await mediaFile.arrayBuffer();
         const buffer = Buffer.from(fileBuffer);
         
         const fileName = `${nanoid(10)}.${fileExtension}`;
-        mediaPath = `/media/${fileName}`;
+        const mediaPath = `/media/${fileName}`;
         
         await fs.mkdir(MEDIA_DIR, { recursive: true });
         // The path.join is safe as fileName is controlled by nanoid and fileExtension by our whitelist
         await fs.writeFile(path.join(MEDIA_DIR, fileName), buffer);
         
-        newNoteMedia = mediaFile.type.startsWith('image/') ? 'image' : 'audio';
+        mediaPaths.push(mediaPath);
+        newNoteMedia.push(mediaFile.type.startsWith('image/') ? 'image' : 'audio');
+      }
     }
 
     let notes: Note[] = [];
     try {
         const fileContent = await fs.readFile(DATA_FILE_PATH, 'utf-8');
         notes = JSON.parse(fileContent) as Note[];
-    } catch (readError: any) {
-        if (readError.code === 'ENOENT' || readError instanceof SyntaxError) {
+    } catch (readError: unknown) {
+        if (readError && typeof readError === 'object' && 'code' in readError && (readError as {code: string}).code === 'ENOENT') {
+            notes = [];
+        } else if (readError instanceof SyntaxError) {
             notes = [];
         } else {
             throw readError;
@@ -82,7 +98,7 @@ export async function POST(request: NextRequest) {
         content: content,
         media: newNoteMedia,
         isFollowing: false, 
-        mediaUrl: mediaPath 
+        mediaUrls: mediaPaths 
     };
 
     notes.unshift(newNote);
@@ -91,7 +107,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
         message: 'Note submitted successfully!', 
         noteId: newNote.id,
-        mediaUrl: mediaPath
+        mediaUrls: mediaPaths
     }, { status: 200 });
 
   } catch (error) {

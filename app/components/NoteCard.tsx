@@ -4,9 +4,9 @@ import { sanitizeHtml } from '../utils/sanitizeHtml';
 interface NoteCardProps {
   note: {
     id: number;
-    title: string;
+    title:string;
     content: string;
-    media: 'image' | 'audio' | null;
+    media: ('image' | 'audio' | null)[];
   };
   onClick: () => void;
 }
@@ -14,6 +14,9 @@ interface NoteCardProps {
 const NoteCard: React.FC<NoteCardProps> = ({ note, onClick }) => {
   const safeTitle = sanitizeHtml(note.title);
   const safeContent = sanitizeHtml(note.content);
+
+  const imageCount = note.media ? note.media.filter(m => m === 'image').length : 0;
+  const audioCount = note.media ? note.media.filter(m => m === 'audio').length : 0;
 
   return (
     <div 
@@ -32,9 +35,11 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onClick }) => {
         />
       </div>
 
-      {note.media && (
+      {(imageCount > 0 || audioCount > 0) && (
         <span className="text-xs mt-2 text-[#4a2f88] font-semibold">
-          ({note.media === 'image' ? '🖼️ Image attached' : '🎶 Audio attached'})
+          {imageCount > 0 && `🖼️ ${imageCount} Image${imageCount > 1 ? 's' : ''}`}
+          {imageCount > 0 && audioCount > 0 && ' / '}
+          {audioCount > 0 && `🎶 ${audioCount} Audio${audioCount > 1 ? 's' : ''}`}
         </span>
       )}
     </div>

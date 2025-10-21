@@ -4,7 +4,7 @@ import React, { useState, ChangeEvent, FormEvent } from 'react';
 import NavBar from "../components/NavBar"; 
 import { useRouter } from 'next/navigation'; 
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; 
+const MAX_FILE_SIZE = 20 * 1024 * 1024; 
 const MAX_WORD_COUNT = 1000; 
 const countWords = (text: string): number => {
     return text.trim().split(/\s+/).filter(Boolean).length;
@@ -15,7 +15,7 @@ export default function CreateNotePage() {
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const wordCount = countWords(content);
@@ -32,28 +32,34 @@ export default function CreateNotePage() {
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files ? e.target.files[0] : null;
+    const files = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = '';
     
-    if (file) {
+    const newFiles = [...mediaFiles];
+    let errorFound = false;
+
+    for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
-        setError(`File size (${(file.size / 1024 / 1024).toFixed(2)} MB) exceeds the 5MB limit.`);
-        setMediaFile(null);
-        return;
+        setError(`File size (${(file.size / 1024 / 1024).toFixed(2)} MB) exceeds the 20MB limit.`);
+        errorFound = true;
+        break;
       }
 
       if (!file.type.startsWith('image/') && !file.type.startsWith('audio/')) {
-        setError('Only image or audio files (max 5MB) are allowed.');
-        setMediaFile(null);
-        return;
+        setError('Only image or audio files are allowed.');
+        errorFound = true;
+        break;
       }
-      
-      setMediaFile(file);
+      newFiles.push(file);
+    }
+
+    if (!errorFound) {
+      setMediaFiles(newFiles);
       if (wordCount <= MAX_WORD_COUNT) {
           setError('');
       }
     } else {
-      setMediaFile(null);
+      setMediaFiles([]);
     }
   };
 
@@ -69,8 +75,8 @@ export default function CreateNotePage() {
         formData.append('title', title);
         formData.append('content', content);
         
-        if (mediaFile) {
-            formData.append('mediaFile', mediaFile);
+        for (const file of mediaFiles) {
+            formData.append('mediaFiles', file);
         }
 
         const response = await fetch('/api/notes', {
@@ -85,7 +91,7 @@ export default function CreateNotePage() {
             
             setTitle('');
             setContent('');
-            setMediaFile(null);
+            setMediaFiles([]);
 
         } else {
             setError(result.error || 'An unknown error occurred during submission.');
@@ -149,20 +155,36 @@ export default function CreateNotePage() {
           </div>
 
           <div className="flex flex-col">
-            <label htmlFor="media" className="text-lg font-semibold text-[#333] mb-2">
-              Optional Media (Image or Audio, Max 5MB)
+            <label className="text-lg font-semibold text-[#333] mb-2">
+              Optional Media (Image or Audio, Max 20MB)
             </label>
-            <input
-              id="media"
-              type="file"
-              accept="image/*,audio/*"
-              onChange={handleFileChange}
-              className="file:p-2 file:rounded-lg file:border-0 file:bg-[#4a2f88] file:text-white file:cursor-pointer file:mr-4 p-2 bg-[#f0f0f0dc] rounded-xl text-[#333] font-sans"
-            />
+            <div className="flex items-center">
+              <label htmlFor="media" className="cursor-pointer bg-[#4a2f88] text-white px-4 py-2 rounded-lg transition-colors hover:bg-[#3e2773]">
+                Choose File
+              </label>
+              <input
+                id="media"
+                type="file"
+                accept="image/*,audio/*"
+                onChange={handleFileChange}
+                className="hidden"
+                multiple
+              />
+              {mediaFiles.length > 0 && !error && (
+                <div className="ml-4">
+                  <p className="text-sm text-[#4a2f88]">Files ready:</p>
+                  <ul className="text-sm text-[#4a2f88]">
+                    {mediaFiles.map((file, index) => (
+                      <li key={index}><strong>{file.name}</strong> ({(file.size / 1024 / 1024).toFixed(2)} MB)</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {mediaFiles.length === 0 && (
+                <p className="text-sm ml-4 text-[#535353]">No file chosen</p>
+              )}
+            </div>
             {error && <p className="text-red-600 text-sm mt-2 font-bold">{error}</p>}
-            {mediaFile && !error && (
-                <p className="text-sm mt-2 text-[#4a2f88]">File ready: **{mediaFile.name}** ({(mediaFile.size / 1024 / 1024).toFixed(2)} MB)</p>
-            )}
           </div>
 
           <button

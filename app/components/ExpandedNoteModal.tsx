@@ -1,14 +1,15 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { sanitizeHtml } from '../utils/sanitizeHtml'; 
 
 interface Note {
     id: number;
     title: string;
     content: string;
-    media: 'image' | 'audio' | null;
-    mediaUrl ?: string | null; 
+    media: ('image' | 'audio' | null)[];
+    mediaUrls ?: (string | null)[]; 
 }
 
 interface ExpandedNoteModalProps {
@@ -23,31 +24,41 @@ const ExpandedNoteModal: React.FC<ExpandedNoteModalProps> = ({ note, onClose }) 
   const safeContent = sanitizeHtml(note.content);
 
   const renderMedia = () => {
-    if (!note.mediaUrl) return null;
+    if (!note.mediaUrls) return null;
     
-    if (note.media === 'image') {
-      return (
-        <img 
-          src={note.mediaUrl} 
-          alt={note.title || "Anonymous Image"} 
-          className="w-full object-contain rounded-lg max-h-96"
-        />
-      );
-    }
-    
-    if (note.media === 'audio') {
-      return (
-        <audio 
-          controls 
-          src={note.mediaUrl} 
-          className="w-full p-2 bg-[#afa7a7] rounded-xl"
-        >
-          Your browser does not support the audio element.
-        </audio>
-      );
-    }
-    
-    return null; 
+    return note.mediaUrls.map((mediaUrl, index) => {
+      if (!mediaUrl) return null;
+
+      const mediaType = note.media[index];
+
+      if (mediaType === 'image') {
+        return (
+          <Image 
+            key={index}
+            src={mediaUrl} 
+            alt={note.title || "Anonymous Image"} 
+            className="w-full object-contain rounded-lg max-h-96 mb-4"
+            width={500}
+            height={500}
+          />
+        );
+      }
+      
+      if (mediaType === 'audio') {
+        return (
+          <audio 
+            key={index}
+            controls 
+            src={mediaUrl} 
+            className="w-full p-2 bg-[#afa7a7] rounded-xl mb-4"
+          >
+            Your browser does not support the audio element.
+          </audio>
+        );
+      }
+      
+      return null; 
+    });
   };
 
   return (
@@ -78,7 +89,7 @@ const ExpandedNoteModal: React.FC<ExpandedNoteModalProps> = ({ note, onClose }) 
           dangerouslySetInnerHTML={{ __html: safeTitle }}
         />
 
-        {note.mediaUrl && ( 
+        {note.mediaUrls && note.mediaUrls.length > 0 && ( 
           <div className="mb-6">
             {renderMedia()}
           </div>
