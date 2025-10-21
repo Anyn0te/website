@@ -128,17 +128,30 @@ const saveMediaFiles = async (
 export async function POST(request: NextRequest) {
   try {
     const token = extractTokenFromRequest(request);
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
-
-    const decoded = await verifyIdToken(token);
     const formData = await request.formData();
     const rawTitle = (formData.get("title") as string | null) ?? "";
     const content = (formData.get("content") as string | null) ?? "";
     const mediaFiles = formData.getAll("mediaFiles") as File[];
 
-    const user = await getOrCreateUser(decoded.uid);
+    let userId: string | null = null;
+    if (token) {
+      const decoded = await verifyIdToken(token);
+      userId = decoded.uid;
+    } else {
+      userId = (formData.get("userId") as string | null)?.trim() ?? null;
+      if (!userId) {
+        userId = request.cookies.get("anynote_guest_id")?.value ?? null;
+      }
+    }
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Missing user identifier." },
+        { status: 400 },
+      );
+    }
+
+    const user = await getOrCreateUser(userId);
     const wordCount = countWords(content);
 
     if (!content || wordCount === 0) {
@@ -171,7 +184,7 @@ export async function POST(request: NextRequest) {
       updatedAt: timestamp,
     };
 
-    await appendNoteToUser(decoded.uid, newNote);
+    await appendNoteToUser(userId, newNote);
     revalidatePath("/");
     revalidatePath("/dashboard");
     revalidatePath("/followed");
@@ -204,12 +217,17 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const token = extractTokenFromRequest(request);
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    const { searchParams } = new URL(request.url);
+    let viewerId: string | null = null;
+
+    if (token) {
+      const decoded = await verifyIdToken(token);
+      viewerId = decoded.uid;
+    } else {
+      viewerId = searchParams.get("guestId") ?? request.cookies.get("anynote_guest_id")?.value ?? null;
     }
 
-    const decoded = await verifyIdToken(token);
-    const notes = await getAggregatedNotesForUser(decoded.uid);
+    const notes = await getAggregatedNotesForUser(viewerId);
     return NextResponse.json({ notes }, { status: 200 });
   } catch (error) {
     console.error("API Read Error:", error);

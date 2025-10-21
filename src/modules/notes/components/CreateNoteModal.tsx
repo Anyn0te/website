@@ -9,6 +9,7 @@ interface CreateNoteModalProps {
   onClose: () => void;
   onCreated?: () => Promise<void> | void;
   token: string | null;
+  userId: string;
   username: string | null;
   displayUsername: boolean;
 }
@@ -24,6 +25,7 @@ const CreateNoteModal = ({
   onClose,
   onCreated,
   token,
+  userId,
   username,
   displayUsername,
 }: CreateNoteModalProps) => {
@@ -36,7 +38,7 @@ const CreateNoteModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const wordCount = useMemo(() => countWords(content), [content]);
-  const canPost = Boolean(token);
+  const canPost = Boolean(userId);
   const isButtonDisabled =
     isSubmitting ||
     !canPost ||
@@ -45,11 +47,9 @@ const CreateNoteModal = ({
     wordCount > MAX_WORD_COUNT ||
     !content.trim();
   const submitLabel =
-    canPost
-      ? displayUsername && username
-        ? `Post as ${username}`
-        : "Post Anonymously"
-      : "Sign in to post";
+    displayUsername && username && token
+      ? `Post as ${username}`
+      : "Post Anonymously";
 
   const resetForm = () => {
     setTitle("");
@@ -132,11 +132,6 @@ const CreateNoteModal = ({
       return;
     }
 
-    if (!token) {
-      setError("Sign in to submit a note.");
-      return;
-    }
-
     setIsSubmitting(true);
     setError(null);
 
@@ -146,6 +141,7 @@ const CreateNoteModal = ({
         content,
         mediaFiles,
         token,
+        userId,
       });
 
       resetForm();
@@ -193,11 +189,9 @@ const CreateNoteModal = ({
             Create Note
           </h1>
           <p className="mt-2 text-sm font-semibold text-[color:var(--color-text-muted)]">
-            {canPost
-              ? displayUsername && username
-                ? `Posting as ${username}`
-                : "Posting anonymously"
-              : "Sign in with Google to share across devices."}
+            {displayUsername && username && token
+              ? `Posting as ${username}`
+              : "Posting anonymously"}
           </p>
         </header>
 

@@ -1,9 +1,11 @@
 export const updateFollowStatus = async ({
+  userId,
   token,
   targetUserId,
   action,
 }: {
-  token: string;
+  userId: string;
+  token?: string | null;
   targetUserId: string;
   action: "follow" | "unfollow";
 }): Promise<string[]> => {
@@ -11,9 +13,10 @@ export const updateFollowStatus = async ({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({
+      userId,
       targetUserId,
       action,
     }),

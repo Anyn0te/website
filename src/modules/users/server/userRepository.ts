@@ -292,17 +292,22 @@ const sortNotesByDateDesc = (notes: StoredNote[]) =>
   );
 
 export const getAggregatedNotesForUser = async (
-  userId: string
+  userId?: string | null,
 ): Promise<Note[]> => {
   const users = await readAllUsers();
-  const viewer = users.find((user) => user.userId === userId) ?? (await getOrCreateUser(userId));
-  const viewerFollowing = new Set(viewer.following);
+  let viewer = userId ? users.find((user) => user.userId === userId) ?? null : null;
+
+  if (!viewer && userId) {
+    viewer = await getOrCreateUser(userId);
+  }
+
+  const viewerFollowing = new Set(viewer?.following ?? []);
 
   const aggregated: Note[] = [];
 
   for (const user of users) {
     const authorName = user.username;
-    const isViewer = user.userId === viewer.userId;
+    const isViewer = viewer ? user.userId === viewer.userId : false;
     const authorNotes = sortNotesByDateDesc(user.notes);
 
     for (const note of authorNotes) {

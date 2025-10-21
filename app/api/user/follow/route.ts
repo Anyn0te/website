@@ -13,16 +13,24 @@ const extractTokenFromRequest = (request: NextRequest) => {
 export async function POST(request: NextRequest) {
   try {
     const token = extractTokenFromRequest(request);
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
-
-    const decoded = await verifyIdToken(token);
-
     const payload = (await request.json()) as {
+      userId?: string;
       targetUserId?: string;
       action?: "follow" | "unfollow";
     };
+    let actingUserId: string | null = null;
+
+    if (token) {
+      const decoded = await verifyIdToken(token);
+      actingUserId = decoded.uid;
+    } else {
+      actingUserId = payload.userId?.trim() ?? request.cookies.get("anynote_guest_id")?.value ?? null;
+    }
+
+    if (!actingUserId) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     const targetUserId = payload.targetUserId?.trim();
     const shouldFollow = payload.action !== "unfollow";
 
@@ -34,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { follower } = await setFollowingStatus(
-      decoded.uid,
+      actingUserId,
       targetUserId,
       shouldFollow
     );

@@ -1,8 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/modules/auth/AuthContext";
 import { ThemePreference } from "../types";
+
+const GUEST_ID_STORAGE_KEY = "anynote:guest-id";
+
+const createGuestId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `guest-${crypto.randomUUID()}`;
+  }
+
+  return `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+};
 
 export interface UserProfile {
   userId: string;
@@ -51,8 +61,7 @@ export const useUserProfile = (): UseUserProfileResult => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const userId = user?.uid ?? null;
+  const [guestId, setGuestId] = useState<string | null>(null);
 
   const resetThemeToSystem = useCallback(() => {
     if (typeof document === "undefined") {
@@ -118,6 +127,25 @@ export const useUserProfile = (): UseUserProfileResult => {
       return;
     }
 
+    if (!token) {
+      let stored = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
+      if (!stored) {
+        stored = createGuestId();
+        window.localStorage.setItem(GUEST_ID_STORAGE_KEY, stored);
+      }
+      document.cookie = `anynote_guest_id=${stored}; path=/; max-age=31536000`;
+      setGuestId(stored);
+    } else {
+      document.cookie = "anynote_guest_id=; path=/; max-age=0";
+      setGuestId(null);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
       if (profile?.themePreference === "system") {
@@ -145,7 +173,7 @@ export const useUserProfile = (): UseUserProfileResult => {
       displayUsername: boolean;
       themePreference: ThemePreference;
     }) => {
-      if (!token || !userId) {
+      if (!token || !user?.uid) {
         throw new Error("User profile is not ready.");
       }
 
@@ -189,11 +217,13 @@ export const useUserProfile = (): UseUserProfileResult => {
         setProfileLoading(false);
       }
     },
-    [token, userId]
+    [token, user?.uid]
   );
 
+  const resolvedUserId = useMemo(() => user?.uid ?? guestId, [user?.uid, guestId]);
+
   return {
-    userId,
+    userId: resolvedUserId,
     profile,
     isLoading: authLoading || profileLoading,
     error,

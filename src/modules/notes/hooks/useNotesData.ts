@@ -8,7 +8,10 @@ export interface UseNotesDataResult {
   reload: () => Promise<void>;
 }
 
-export const useNotesData = (token: string | null): UseNotesDataResult => {
+export const useNotesData = (
+  viewerId: string | null,
+  token: string | null,
+): UseNotesDataResult => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,22 +25,15 @@ export const useNotesData = (token: string | null): UseNotesDataResult => {
   }, []);
 
   const fetchNotes = useCallback(async () => {
-    if (!token) {
-      if (isMountedRef.current) {
-        setNotes([]);
-        setIsLoading(false);
-        setError(null);
-      }
-      return;
-    }
+    const query = viewerId ? `?guestId=${encodeURIComponent(viewerId)}` : "";
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/notes`, {
+      const response = await fetch(`/api/notes${query}`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
       if (response.status === 401) {
@@ -65,7 +61,7 @@ export const useNotesData = (token: string | null): UseNotesDataResult => {
         setIsLoading(false);
       }
     }
-  }, [token]);
+  }, [viewerId, token]);
 
   useEffect(() => {
     void fetchNotes();

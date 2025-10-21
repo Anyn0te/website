@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import BottomNav from "@/components/navigation/BottomNav";
 import { useNotesData } from "../hooks/useNotesData";
 import { useUserProfile } from "@/modules/users/hooks/useUserProfile";
@@ -14,14 +14,9 @@ interface NotesHomeViewProps {
 }
 
 const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
+  const { token } = useAuth();
   const {
-    user,
-    token,
-    loading: authLoading,
-    signInWithGoogle,
-    signOutUser,
-  } = useAuth();
-  const {
+    userId,
     profile,
     isLoading: isProfileLoading,
     error: profileError,
@@ -32,11 +27,10 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
     isLoading: isNotesLoading,
     error: notesError,
     reload,
-  } = useNotesData(token);
+  } = useNotesData(userId, token ?? null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isFollowPending, setIsFollowPending] = useState(false);
   const [followError, setFollowError] = useState<string | null>(null);
-  const [showAuthNotice, setShowAuthNotice] = useState(false);
 
   const filteredNotes = useMemo(() => {
     if (variant === "followed") {
@@ -52,98 +46,56 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
       ? "Follow creators to see their notes here."
       : "No notes yet. Be the first to share a thought.";
 
-  const combinedError = profileError ?? notesError ?? followError;
-  const isLoading = authLoading || isProfileLoading || isNotesLoading;
-  const isAuthenticated = Boolean(user && token);
+  const combinedError = notesError ?? profileError ?? followError;
+  const isLoading = isNotesLoading || (token ? isProfileLoading : false);
 
-  const handleFollowStatusChange = async (targetUserId: string, shouldFollow: boolean) => {
-    if (!token) {
-      setFollowError("Sign in to manage following.");
-      return;
-    }
+  const handleFollowStatusChange = useCallback(
+    async (targetUserId: string, shouldFollow: boolean) => {
+      if (!userId) {
+        return;
+      }
 
-    setFollowError(null);
-    setIsFollowPending(true);
+      setFollowError(null);
+      setIsFollowPending(true);
 
-    try {
-      await updateFollowStatus({
-        token,
-        targetUserId,
-        action: shouldFollow ? "follow" : "unfollow",
-      });
+      try {
+        await updateFollowStatus({
+          userId,
+          token,
+          targetUserId,
+          action: shouldFollow ? "follow" : "unfollow",
+        });
 
-      await Promise.all([reload(), refreshProfile()]);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to update follow status.";
-      setFollowError(message);
-    } finally {
-      setIsFollowPending(false);
-    }
-  };
+        await Promise.all([reload(), refreshProfile()]);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to update follow status.";
+        setFollowError(message);
+      } finally {
+        setIsFollowPending(false);
+      }
+    },
+    [userId, token, reload, refreshProfile],
+  );
+
+  const followHandler = userId ? handleFollowStatusChange : undefined;
 
   const handleOpenCreateModal = () => {
-    if (!isAuthenticated) {
-      setShowAuthNotice(true);
-      return;
-    }
     setIsCreateModalOpen(true);
   };
 
-  const hideAuthNotice = () => setShowAuthNotice(false);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      setShowAuthNotice(false);
-    }
-  }, [isAuthenticated]);
-
   return (
     <div className="min-h-screen bg-[color:var(--color-app-bg)]/40 p-6 pb-32 transition-colors">
-      <header className="mx-auto mb-8 max-w-5xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/92 p-6 shadow-[0_35px_90px_var(--color-glow)] backdrop-blur-xl">
-        <div className="flex flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
-          <div>
-            <h1 className="text-3xl font-bold tracking-wide text-[color:var(--color-text-primary)]">
-              {pageHeading}
-            </h1>
-            {profile?.username && profile.displayUsername && (
-              <p className="mt-2 text-sm text-[color:var(--color-text-muted)]">
-                Signed in as @{profile.username}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col items-center gap-2 md:flex-row">
-            {!isAuthenticated && (
-              <button
-                onClick={() =>
-                  void signInWithGoogle().catch((signInError) =>
-                    console.error("Google sign-in failed", signInError),
-                  )
-                }
-                className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-accent)] px-5 py-2 text-sm font-semibold text-[color:var(--color-on-accent)] shadow-[0_20px_45px_var(--color-glow)] transition-colors hover:bg-[color:var(--color-accent-hover)]"
-              >
-                <i className="bi bi-google" aria-hidden="true" />
-                Sign in with Google
-              </button>
-            )}
-            {isAuthenticated && (
-              <button
-                onClick={() =>
-                  void signOutUser().catch((signOutError) =>
-                    console.error("Sign out failed", signOutError),
-                  )
-                }
-                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] px-4 py-2 text-sm font-semibold text-[color:var(--color-text-accent)] shadow-[0_15px_35px_var(--color-glow)] transition-all hover:border-[color:var(--color-text-accent)] hover:bg-[color:var(--color-card-hover-bg)]"
-              >
-                <i className="bi bi-box-arrow-right" aria-hidden="true" />
-                Sign out
-              </button>
-            )}
-          </div>
-        </div>
-        {!isAuthenticated && !authLoading && (
-          <p className="mt-4 text-sm text-[color:var(--color-text-muted)]">
-            Sign in to sync notes across devices and follow other creators.
+      <header className="mx-auto mb-8 max-w-5xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/92 p-6 text-center shadow-[0_35px_90px_var(--color-glow)] backdrop-blur-xl">
+        <h1 className="text-3xl font-bold tracking-wide text-[color:var(--color-text-primary)]">
+          {pageHeading}
+        </h1>
+        <p className="mt-2 text-sm text-[color:var(--color-text-muted)]">
+          Browse every public note, anonymous or otherwise.
+        </p>
+        {profile?.username && profile.displayUsername && (
+          <p className="mt-2 text-xs uppercase tracking-[0.3em] text-[color:var(--color-text-accent)]">
+            Signed in as @{profile.username}
           </p>
         )}
       </header>
@@ -167,32 +119,12 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
             notes={filteredNotes}
             emptyMessage={emptyMessage}
             onFollowStatusChange={
-              token && (variant === "followed" || variant === "dashboard")
-                ? handleFollowStatusChange
+              followHandler && (variant === "followed" || variant === "dashboard")
+                ? followHandler
                 : undefined
             }
-            followActionPending={isFollowPending && Boolean(token)}
+            followActionPending={Boolean(followHandler) && isFollowPending}
           />
-        )}
-
-        {showAuthNotice && !isAuthenticated && (
-          <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/92 p-6 text-center text-[color:var(--color-text-accent)] shadow-[0_25px_65px_var(--color-glow)]">
-            <p className="mb-3 text-sm font-semibold">
-              Sign in with Google to create notes and follow other users.
-            </p>
-            <button
-              onClick={() => {
-                void signInWithGoogle().catch((signInError) =>
-                  console.error("Google sign-in failed", signInError),
-                );
-                hideAuthNotice();
-              }}
-              className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-accent)] px-4 py-2 text-sm font-semibold text-[color:var(--color-on-accent)] shadow-[0_18px_40px_var(--color-glow)] transition-colors hover:bg-[color:var(--color-accent-hover)]"
-            >
-              <i className="bi bi-google" aria-hidden="true" />
-              Continue with Google
-            </button>
-          </section>
         )}
       </main>
       <BottomNav onOpenCreateModal={handleOpenCreateModal} />
@@ -203,6 +135,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         token={token}
         username={profile?.username ?? null}
         displayUsername={profile?.displayUsername ?? false}
+        userId={userId ?? ""}
       />
     </div>
   );
