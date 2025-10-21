@@ -18,7 +18,7 @@ const NoteCard = ({ note, onClick }: NoteCardProps) => {
   return (
     <div
       onClick={onClick}
-      className="flex h-48 cursor-pointer flex-col justify-start rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)]/95 p-5 shadow-[0_18px_45px_var(--color-glow)] backdrop-blur-lg transition-all hover:-translate-y-1 hover:bg-[color:var(--color-card-hover-bg)] hover:shadow-[0_24px_60px_var(--color-glow)]"
+      className="flex h-48 cursor-pointer flex-col justify-start rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-5 shadow-[0_8px_20px_var(--color-glow)] transition-transform transition-shadow duration-200 hover:-translate-y-1 hover:bg-[color:var(--color-card-hover-bg)] hover:shadow-[0_12px_28px_var(--color-glow)]"
     >
       <div className="mb-2 flex items-center justify-between text-[color:var(--color-text-muted)]">
         <span className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-text-accent)]">

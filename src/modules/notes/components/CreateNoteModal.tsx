@@ -162,7 +162,7 @@ const CreateNoteModal = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 h-full w-full bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 h-full w-full bg-black/60"
         onClick={() => {
           resetForm();
           onClose();
@@ -170,7 +170,7 @@ const CreateNoteModal = ({
       />
 
       <div
-        className="relative z-50 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)]/96 p-6 shadow-[0_40px_100px_var(--color-glow)] backdrop-blur-2xl transition-colors"
+        className="relative z-50 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)] p-6 shadow-[0_16px_32px_var(--color-glow)] transition-colors"
         onClick={(event) => event.stopPropagation()}
       >
         <button

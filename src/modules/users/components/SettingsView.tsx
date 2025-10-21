@@ -104,8 +104,8 @@ const SettingsView = () => {
       : "Your notes remain anonymous to others.";
 
   return (
-    <div className="min-h-screen bg-[color:var(--color-app-bg)]/40 p-6 pb-32 transition-colors">
-      <header className="mx-auto mb-8 max-w-3xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/92 p-6 shadow-[0_35px_90px_var(--color-glow)] backdrop-blur-xl">
+    <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-32 transition-colors">
+      <header className="mx-auto mb-8 max-w-3xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 shadow-[0_12px_26px_var(--color-glow)]">
         <div className="flex flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
           <div>
             <h1 className="text-3xl font-bold text-[color:var(--color-text-primary)]">
@@ -119,7 +119,7 @@ const SettingsView = () => {
             {!token && !authLoading && (
               <button
                 onClick={signInWithGoogle}
-                className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-accent)] px-5 py-2 text-sm font-semibold text-[color:var(--color-on-accent)] shadow-[0_20px_45px_var(--color-glow)] transition-colors hover:bg-[color:var(--color-accent-hover)]"
+                className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-accent)] px-5 py-2 text-sm font-semibold text-[color:var(--color-on-accent)] shadow-[0_8px_18px_var(--color-glow)] transition-colors hover:bg-[color:var(--color-accent-hover)]"
               >
                 <i className="bi bi-google" aria-hidden="true" />
                 Sign in with Google
@@ -132,7 +132,7 @@ const SettingsView = () => {
                     console.error("Sign out failed", signOutError),
                   )
                 }
-                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] px-4 py-2 text-sm font-semibold text-[color:var(--color-text-accent)] shadow-[0_15px_35px_var(--color-glow)] transition-all hover:border-[color:var(--color-text-accent)] hover:bg-[color:var(--color-card-hover-bg)]"
+                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] px-4 py-2 text-sm font-semibold text-[color:var(--color-text-accent)] shadow-sm transition-all hover:border-[color:var(--color-text-accent)] hover:bg-[color:var(--color-card-hover-bg)]"
               >
                 <i className="bi bi-box-arrow-right" aria-hidden="true" />
                 Sign out
@@ -149,18 +149,18 @@ const SettingsView = () => {
 
       <main className="mx-auto max-w-2xl space-y-6">
         {(isLoading && !profile) && (
-          <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/88 p-6 text-center text-[color:var(--color-text-muted)] shadow-[0_30px_70px_var(--color-glow)] backdrop-blur-xl">
+          <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center text-[color:var(--color-text-muted)] shadow-[0_8px_20px_var(--color-glow)]">
             Loading your preferences...
           </section>
         )}
 
         {error && !isLoading && (
-          <section className="rounded-2xl border border-red-200/40 bg-red-100/85 p-6 text-center text-red-900 shadow-[0_25px_60px_rgba(248,113,113,0.35)]">
+          <section className="rounded-2xl border border-red-200/70 bg-red-100 p-6 text-center text-red-900 shadow-md">
             {error}
           </section>
         )}
 
-        <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/92 p-6 shadow-[0_35px_85px_var(--color-glow)] backdrop-blur-xl transition-colors">
+        <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 shadow-[0_12px_26px_var(--color-glow)] transition-colors">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label

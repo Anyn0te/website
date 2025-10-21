@@ -35,7 +35,7 @@ const NoteSection = ({
 
   return (
     <>
-      <section className="relative rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/90 p-6 shadow-[0_30px_70px_var(--color-glow)] backdrop-blur-xl transition-colors">
+      <section className="relative rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 shadow-[0_8px_20px_var(--color-glow)] transition-colors">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold uppercase text-[color:var(--color-text-primary)]">
             {title}
@@ -44,7 +44,7 @@ const NoteSection = ({
           {canExpand && (
             <button
               onClick={handleExpandToggle}
-              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] px-3 py-1.5 text-sm font-semibold text-[color:var(--color-text-accent)] shadow-[0_10px_30px_var(--color-glow)] transition-all hover:border-[color:var(--color-text-accent)] hover:bg-[color:var(--color-card-hover-bg)] hover:text-[color:var(--color-text-primary)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] px-3 py-1.5 text-sm font-semibold text-[color:var(--color-text-accent)] shadow-sm transition-all hover:border-[color:var(--color-text-accent)] hover:bg-[color:var(--color-card-hover-bg)] hover:text-[color:var(--color-text-primary)]"
               aria-label={
                 showAll
                   ? "Collapse section to initial view"
@@ -61,7 +61,7 @@ const NoteSection = ({
         </div>
 
         {notes.length === 0 ? (
-          <p className="rounded-xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)]/90 p-6 text-center text-sm font-medium text-[color:var(--color-text-muted)] backdrop-blur-md">
+          <p className="rounded-xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-6 text-center text-sm font-medium text-[color:var(--color-text-muted)]">
             {emptyMessage ?? "No notes to display yet."}
           </p>
         ) : (

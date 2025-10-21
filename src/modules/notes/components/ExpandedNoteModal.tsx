@@ -90,12 +90,12 @@ const ExpandedNoteModal = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 h-full w-full bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 h-full w-full bg-black/60"
         onClick={onClose}
       />
 
       <div
-        className="relative z-50 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)]/96 p-6 shadow-[0_40px_100px_var(--color-glow)] backdrop-blur-2xl transition-colors"
+        className="relative z-50 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)] p-6 shadow-[0_16px_32px_var(--color-glow)] transition-colors"
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -135,8 +135,8 @@ const ExpandedNoteModal = ({
                   isFollowButtonDisabled
                     ? "cursor-not-allowed bg-[color:var(--color-button-disabled-bg)] text-[color:var(--color-button-disabled-text)]"
                     : note.isFollowedAuthor
-                      ? "bg-[color:var(--color-neutral-button-bg)] text-[color:var(--color-neutral-button-text)] shadow-[0_15px_30px_var(--color-glow)] hover:bg-[color:var(--color-neutral-button-hover-bg)]"
-                      : "bg-[color:var(--color-accent)] text-[color:var(--color-on-accent)] shadow-[0_20px_40px_var(--color-glow)] hover:bg-[color:var(--color-accent-hover)]"
+                      ? "bg-[color:var(--color-neutral-button-bg)] text-[color:var(--color-neutral-button-text)] shadow-sm hover:bg-[color:var(--color-neutral-button-hover-bg)]"
+                      : "bg-[color:var(--color-accent)] text-[color:var(--color-on-accent)] shadow-sm hover:bg-[color:var(--color-accent-hover)]"
                 }`}
               >
                 {isFollowButtonDisabled ? "Updating..." : followButtonLabel}
@@ -183,7 +183,7 @@ const ExpandedNoteModal = ({
           </div>
         )}
 
-        <div className="rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)]/95 p-5 text-[color:var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+        <div className="rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-5 text-[color:var(--color-text-primary)]">
           <p
             className="text-base leading-relaxed"
             dangerouslySetInnerHTML={{ __html: safeContent }}

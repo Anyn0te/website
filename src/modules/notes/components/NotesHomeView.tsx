@@ -85,8 +85,8 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-[color:var(--color-app-bg)]/40 p-6 pb-32 transition-colors">
-      <header className="mx-auto mb-8 max-w-5xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/92 p-6 text-center shadow-[0_35px_90px_var(--color-glow)] backdrop-blur-xl">
+    <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-32 transition-colors">
+      <header className="mx-auto mb-8 max-w-5xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center shadow-[0_12px_24px_var(--color-glow)]">
         <h1 className="text-3xl font-bold tracking-wide text-[color:var(--color-text-primary)]">
           {pageHeading}
         </h1>
@@ -102,13 +102,13 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
 
       <main className="mx-auto max-w-5xl space-y-6">
         {isLoading && (
-          <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/88 p-6 text-center text-[color:var(--color-text-muted)] shadow-[0_30px_70px_var(--color-glow)] backdrop-blur-xl">
+          <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center text-[color:var(--color-text-muted)] shadow-[0_8px_20px_var(--color-glow)]">
             Loading notes...
           </section>
         )}
 
         {combinedError && !isLoading && (
-          <section className="rounded-2xl border border-red-200/40 bg-red-100/80 p-6 text-center text-red-900 shadow-[0_25px_60px_rgba(248,113,113,0.35)]">
+          <section className="rounded-2xl border border-red-200/70 bg-red-100 p-6 text-center text-red-900 shadow-md">
             {combinedError}
           </section>
         )}
