@@ -1,18 +1,37 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 export default function NavBar() {
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
 
   const toggleNav = () => {
     setIsNavOpen((prev) => !prev);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setIsNavOpen(false);
+      }
+    };
+
+    if (isNavOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNavOpen]);
+
   const navContainerClass = isNavOpen ? 'navi navi-open z-40' : 'navi navi-closed z-40';
   
-  const iconClass = isNavOpen ? 'bi-x' : 'bi-list';
+  const iconClass = isNavOpen ? 'bi-plus' : 'bi-list';
 
   const handleLinkClick = () => {
     if (isNavOpen) {
@@ -21,7 +40,7 @@ export default function NavBar() {
   };
 
   return (
-    <div className={navContainerClass}>
+    <div className={navContainerClass} ref={navRef}>
       <nav id="nev">
         <ul className="items">
           <li className="nav-item">
@@ -51,13 +70,15 @@ export default function NavBar() {
           </li>
         </ul>
         
-        <i 
-          id="ham" 
-          className={`bi ${iconClass}`} 
-          onClick={toggleNav} 
-          role="button"
-          aria-label={isNavOpen ? "Close menu" : "Open menu"}
-        />
+        {!isNavOpen && (
+          <i 
+            id="ham" 
+            className={`bi ${iconClass}`} 
+            onClick={toggleNav} 
+            role="button"
+            aria-label={isNavOpen ? "Close menu" : "Open menu"}
+          />
+        )}
       </nav>
     </div>
   );

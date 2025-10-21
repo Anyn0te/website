@@ -9,7 +9,6 @@ This document tracks current known issues, planned features, and recorded update
 These are issues confirmed but not yet fixed in the application.
 
 - **Missing Modal Escape:** There is currently no functionality to close the expanded note view/modal by pressing the `Esc` key.
-- **Mobile Navigation Lock:** In the mobile view (hamburger menu open), there is no clear and functional button to explicitly close the navigation bar once it is expanded.
 
 ---
 
@@ -69,6 +68,15 @@ Documenting all major features and fixes implemented in the project thus far.
 | **Fix**      | Fixed linting errors related to `any` types in API route and HTML sanitization utility.                                                                                   |
 | **Fix**      | Replaced `<img>` with `next/image` in `ExpandedNoteModal.tsx` for better image optimization.                                                                              |
 | **Fix**      | Removed unused `expandToPage` prop from `NoteSection.tsx` and `app/page.tsx`.                                                                                             |
+
+### Version 0.3.0 - Mobile Navigation Improvements
+
+| Type         | Description                                                                                                                                                               |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Feature**  | Changed hamburger icon to a plus icon when the navigation menu is open.                                                                                                   |
+| **Feature**  | Implemented outside click dismissal for the mobile navigation menu.                                                                                                       |
+| **Fix**      | Ensured the 3-line hamburger icon is correctly centered in the mobile view.                                                                                               |
+| **Fix**      | Hid the plus icon when the mobile navigation menu is expanded.                                                                                                            |
 
 ## Date 21-10-25
 
