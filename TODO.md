@@ -19,6 +19,9 @@ These items outline the planned work, reflecting the decision to drop the follow
 - Need to design and implement a dedicated **Music Player UI** within the Expanded Note Modal.
 - **Change web description** and update `<head>` items (Metadata, Favicon) across all pages.
 - Add Note Feelings - it will be a way to react to the note
+- Replace mock hydration with server-sourced data and introduce caching/loading states for better perceived performance.
+- Design a persistence strategy to migrate from JSON storage to a proper database-backed repository.
+- Document navigation modules and shared utilities for onboarding new contributors.
 
 ### Page Structure & Routing
 
@@ -83,6 +86,16 @@ Documenting all major features and fixes implemented in the project thus far.
 | **Feature**  | Refactored the "Create Note" section into a modal dialog with a blurry background.                                                                                      |
 | **Feature**  | Implemented `Escape` key dismissal for both the Expanded Note Modal and the new Create Note Modal.                                                                        |
 | **Fix**      | Prevented background scrolling when any modal is open in mobile view.                                                                                                     |
+
+### Version 0.5.0 - Modular Architecture and Storage Refactor
+
+| Type         | Description                                                                                                                                                               |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Feature**  | Introduced a modular `src/modules/notes` domain, consolidating UI, hooks, and services for easier scaling.                                                                |
+| **Feature**  | Added a JSON-backed repository with GET/POST APIs, laying groundwork for future persistence upgrades.                                                                    |
+| **Feature**  | Centralized sanitization utility in `lib/` and added path aliases for shared modules.                                                                                     |
+| **Fix**      | Rebuilt the mobile navigation styling to keep the hamburger icon centered and to cleanly animate the menu.                                                                |
+| **Fix**      | Replaced the circular expand button with a text + chevron button for improved readability.                                                                                |
 
 ## Date 21-10-25
 

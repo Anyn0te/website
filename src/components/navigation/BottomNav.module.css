@@ -1,0 +1,141 @@
+.container {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding-bottom: 30px;
+  z-index: 40;
+}
+
+.nav {
+  background-color: rgba(240, 240, 240, 0.62);
+  width: 40%;
+  height: 60px;
+  border-radius: 30px;
+  opacity: 0.75;
+  transition: 0.5s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.nav:hover {
+  background-color: rgba(240, 240, 240, 0.86);
+  opacity: 1;
+}
+
+.items {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.navItem {
+  display: block;
+}
+
+.navItemLink {
+  text-decoration: none;
+  color: #333;
+  font-family: "Shadows Into Light", cursive;
+  font-size: 1.2em;
+  transition: 0.5s;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.navItemLink:hover {
+  color: #535353;
+  background-color: #afa7a7;
+  font-weight: bold;
+}
+
+.menuToggle {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  width: 60px;
+  height: 60px;
+  font-size: 25px;
+  color: #333;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: auto;
+    padding-bottom: 20px;
+    right: 20px;
+    left: auto;
+  }
+
+  .nav {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    opacity: 1;
+    background-color: rgba(240, 240, 240, 0.86);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    transition: width 0.4s ease-in-out, height 0.4s ease-in-out,
+      border-radius 0.4s ease-in-out;
+    position: relative;
+  }
+
+  .menuToggle {
+    display: flex;
+  }
+
+  .items {
+    display: none;
+    padding: 0;
+  }
+
+  .itemsOpen {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    padding: 15px 15px 70px 15px;
+    width: 100%;
+    height: auto;
+  }
+
+  .navItem {
+    display: none;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .itemsOpen .navItem {
+    display: list-item;
+    opacity: 1;
+    visibility: visible;
+    margin: 10px 0;
+    transition: opacity 0.3s ease 0.1s;
+  }
+
+  .navOpen {
+    width: 180px;
+    height: 250px;
+    border-radius: 30px;
+    max-height: 400px;
+  }
+
+  .navOpen .menuToggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 1.5em;
+  }
+}
