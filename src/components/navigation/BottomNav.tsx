@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import styles from "./BottomNav.module.css";
 
 interface BottomNavProps {
@@ -11,6 +12,23 @@ interface BottomNavProps {
 const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  const navItems = useMemo(
+    () => [
+      { label: "Home", href: "/", icon: "house-door" },
+      { label: "Dashboard", href: "/dashboard", icon: "speedometer2" },
+      {
+        label: "Create Note",
+        action: onOpenCreateModal,
+        icon: "plus-circle",
+        type: "action" as const,
+      },
+      { label: "About Us", href: "/about", icon: "info-circle" },
+      { label: "Settings", href: "/settings", icon: "gear" },
+    ],
+    [onOpenCreateModal],
+  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -28,6 +46,10 @@ const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
   const navClassName = [
     styles.nav,
     isOpen ? styles.navOpen : "",
@@ -41,76 +63,71 @@ const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
     .trim();
 
   return (
-    <div className={styles.container} ref={navRef}>
+    <div className={styles.container} ref={navRef} data-open={isOpen}>
       <nav className={navClassName} aria-label="Primary navigation">
-        <ul className={itemsClassName}>
-          <li className={styles.navItem}>
-            <Link
-              className={styles.navItemLink}
-              href="/"
-              onClick={() => setIsOpen(false)}
-            >
-              Home
-            </Link>
-          </li>
-          <li className={styles.navItem}>
-            <Link
-              className={styles.navItemLink}
-              href="/dashboard"
-              onClick={() => setIsOpen(false)}
-            >
-              Dashboard
-            </Link>
-          </li>
-          <li className={styles.navItem}>
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                onOpenCreateModal();
-              }}
-              className={`${styles.navItemLink} w-full text-left`}
-              type="button"
-            >
-              Create Note
-            </button>
-          </li>
-          <li className={styles.navItem}>
-            <Link
-              className={styles.navItemLink}
-              href="/about"
-              onClick={() => setIsOpen(false)}
-            >
-              About Us
-            </Link>
-          </li>
-          <li className={styles.navItem}>
-            <Link
-              className={styles.navItemLink}
-              href="/settings"
-              onClick={() => setIsOpen(false)}
-            >
-              Settings
-            </Link>
-          </li>
-        </ul>
+        <ul className={itemsClassName} id="primary-navigation">
+          {navItems.map((item) => {
+            const isAction = item.type === "action";
+            const isActive =
+              !isAction &&
+              (item.href === "/"
+                ? pathname === "/"
+                : pathname?.startsWith(item.href));
+            const navItemClassName = [
+              styles.navItem,
+              isActive ? styles.navItemActive : "",
+            ]
+              .join(" ")
+              .trim();
 
-        {!isOpen && (
-          <i
-            className={`bi bi-list ${styles.menuToggle}`}
-            onClick={() => setIsOpen(true)}
-            role="button"
-            aria-label="Open menu"
-          />
-        )}
-        {isOpen && (
-          <i
-            className={`bi bi-plus ${styles.menuToggle}`}
-            onClick={() => setIsOpen(false)}
-            role="button"
-            aria-label="Close menu"
-          />
-        )}
+            return (
+              <li key={item.label} className={navItemClassName}>
+                {isAction ? (
+                  <button
+                    type="button"
+                    className={styles.navButton}
+                    onClick={() => {
+                      setIsOpen(false);
+                      item.action();
+                    }}
+                  >
+                    <span
+                      className={`bi bi-${item.icon}`}
+                      aria-hidden="true"
+                    />
+                    <span className={styles.navLabel}>{item.label}</span>
+                  </button>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className={styles.navLink}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <span
+                      className={`bi bi-${item.icon}`}
+                      aria-hidden="true"
+                    />
+                    <span className={styles.navLabel}>{item.label}</span>
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       </nav>
+      <button
+        aria-controls="primary-navigation"
+        aria-expanded={isOpen}
+        aria-label={isOpen ? "Close menu" : "Open menu"}
+        className={styles.menuToggle}
+        onClick={() => setIsOpen((prev) => !prev)}
+        type="button"
+      >
+        <span
+          aria-hidden="true"
+          className={`bi ${isOpen ? "bi-x-lg" : "bi-list"}`}
+        />
+      </button>
     </div>
   );
 };
