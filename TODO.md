@@ -8,7 +8,6 @@ This document tracks current known issues, planned features, and recorded update
 
 These are issues confirmed but not yet fixed in the application.
 
-- **Music Playback Issue:** Some music files play for only a fraction of a second (ex: check note titled "ami valo mansuh na"). This is likely due to the browser's handling of specific audio file formats or missing controls/auto-play settings in the audio tag.
 - **Missing Modal Escape:** There is currently no functionality to close the expanded note view/modal by pressing the `Esc` key.
 - **Mobile Navigation Lock:** In the mobile view (hamburger menu open), there is no clear and functional button to explicitly close the navigation bar once it is expanded.
 
@@ -22,7 +21,6 @@ These items outline the planned work, reflecting the decision to drop the follow
 
 - Need to design and implement a dedicated **Music Player UI** within the Expanded Note Modal.
 - **Change web description** and update `<head>` items (Metadata, Favicon) across all pages.
-- [Maybe] Increase the file size limit (currently 5MB) after further security review.
 - Add Note Feelings - it will be a way to react to the note
 
 ### Page Structure & Routing
@@ -58,6 +56,19 @@ Documenting all major features and fixes implemented in the project thus far.
 | **Fix**      | Enabled automatic page refresh on the home page after a successful post using `revalidatePath`.                                                                           |
 | **Fix**      | Improved visual consistency: Fixed note card text overflow, ensured floating navigation bar is fully blurred beneath the modal, and adjusted the expand arrow size/shape. |
 | **Fix**      | Added redirect from the Create Note Page to the Home Page upon successful post submission.                                                                                |
+
+### Version 0.2.0 - Multiple Media Uploads and Bug Fixes
+
+| Type         | Description                                                                                                                                                               |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Feature**  | Implemented support for uploading and displaying multiple image and audio files per note.                                                                                 |
+| **Feature**  | Increased client-side and server-side file upload limits to 20MB.                                                                                                         |
+| **Feature**  | Improved client-side file input UI in the Create Note Page to clearly show selected file names.                                                                           |
+| **Fix**      | Resolved `TypeError` related to `note.media` being `null` or not an array in `NoteCard.tsx` and `NoteSection.tsx`.                                                        |
+| **Fix**      | Expanded supported audio MIME types (`wav`, `ogg`) in the notes API.                                                                                                      |
+| **Fix**      | Fixed linting errors related to `any` types in API route and HTML sanitization utility.                                                                                   |
+| **Fix**      | Replaced `<img>` with `next/image` in `ExpandedNoteModal.tsx` for better image optimization.                                                                              |
+| **Fix**      | Removed unused `expandToPage` prop from `NoteSection.tsx` and `app/page.tsx`.                                                                                             |
 
 ## Date 21-10-25
 
