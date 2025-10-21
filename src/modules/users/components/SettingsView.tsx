@@ -21,12 +21,12 @@ const SettingsView = () => {
     signInWithGoogle,
     signOutUser,
   } = useAuth();
-  const { userId, profile, isLoading, error, updateProfile, refreshProfile } = useUserProfile();
+  const { userId, profile, isLoading, error, updateProfile, refreshProfile, setThemePreference } = useUserProfile();
   const { reload } = useNotesData(userId, token ?? null);
 
   const [username, setUsername] = useState("");
   const [displayUsername, setDisplayUsername] = useState(false);
-  const [themePreference, setThemePreference] = useState<ThemePreference>("system");
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>("system"); 
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,7 +40,7 @@ const SettingsView = () => {
     if (profile) {
       setUsername(profile.username ?? "");
       setDisplayUsername(Boolean(profile.displayUsername && profile.username));
-      setThemePreference(profile.themePreference);
+      setThemePreferenceState(profile.themePreference); 
     }
   }, [profile]);
 
@@ -62,12 +62,37 @@ const SettingsView = () => {
 
   const canEditProfile = Boolean(token);
 
+  const handleThemeChange = async (newTheme: ThemePreference) => {
+    setThemePreferenceState(newTheme); 
+    try {
+      await setThemePreference(newTheme);
+    } catch (updateError) {
+      const message =
+        updateError instanceof Error
+          ? updateError.message
+          : "Unable to update theme.";
+      setFormError(message);
+    }
+  };
+
+  const isProfileChanged =
+    username !== (profile?.username ?? "") ||
+    displayUsername !== Boolean(profile?.displayUsername && profile?.username);
+
+  const isSaveDisabled = useMemo(() => {
+    if (isLoading || isSaving) return true;
+    return !token || !isProfileChanged;
+  }, [isLoading, isSaving, token, isProfileChanged]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     if (!token || !userId) {
       setFormError("Sign in to update your profile settings.");
       return;
+    }
+    
+    if (!isProfileChanged) {
+        return; 
     }
 
     if (displayUsername && !canDisplayUsername) {
@@ -83,10 +108,10 @@ const SettingsView = () => {
       await updateProfile({
         username: username.trim() || null,
         displayUsername,
-        themePreference,
+        themePreference, 
       });
-      await Promise.all([refreshProfile(), reload()]);
-      setFormSuccess("Settings saved successfully.");
+      await Promise.all([reload(), refreshProfile()]); 
+      setFormSuccess("Profile settings saved successfully.");
     } catch (updateError) {
       setFormError(
         updateError instanceof Error
@@ -99,9 +124,10 @@ const SettingsView = () => {
   };
 
   const anonymousHint =
-    displayUsername && canDisplayUsername
+    displayUsername && canDisplayUsername && token
       ? `Your notes will appear as @${username.trim()}`
       : "Your notes remain anonymous to others.";
+  const isDisabledForGuests = !canEditProfile || isSaving;
 
   return (
     <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-32 transition-colors">
@@ -179,7 +205,7 @@ const SettingsView = () => {
                 onChange={(event) => setUsername(event.target.value)}
                 className="mt-2 w-full rounded-xl border border-[color:var(--color-divider)] bg-[color:var(--color-input-bg)] p-3 text-[color:var(--color-text-primary)] shadow-sm focus:border-[color:var(--color-text-accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="Choose something unique"
-                disabled={!canEditProfile || isSaving}
+                disabled={isDisabledForGuests}
               />
               <p className="mt-2 text-xs text-[color:var(--color-text-muted)]">
                 Usernames must be unique. When visible, uploads use this name in their filenames.
@@ -193,7 +219,7 @@ const SettingsView = () => {
                   type="checkbox"
                   checked={displayUsername && canDisplayUsername}
                   onChange={(event) => setDisplayUsername(event.target.checked)}
-                  disabled={!canDisplayUsername || isSaving || !canEditProfile}
+                  disabled={isDisabledForGuests || !canDisplayUsername}
                   className="mt-1 h-5 w-5 rounded border-[color:var(--color-divider)] text-[color:var(--color-accent)] focus:ring-[color:var(--color-accent)]"
                 />
                 <span>
@@ -217,8 +243,9 @@ const SettingsView = () => {
               <select
                 id="theme"
                 value={themePreference}
-                onChange={(event) => setThemePreference(event.target.value as ThemePreference)}
-                className="mt-2 w-full rounded-xl border border-[color:var(--color-divider)] bg-[color:var(--color-input-bg)] p-3 text-[color:var(--color-text-primary)] shadow-sm focus:border-[color:var(--color-text-accent)] focus:outline-none"
+                onChange={(event) => void handleThemeChange(event.target.value as ThemePreference)}
+                className="mt-2 w-full rounded-xl border border-[color:var(--color-divider)] bg-[color:var(--color-input-bg)] p-3 text-[color:var(--color-text-primary)] shadow-sm focus:border-[color:var(--color-text-accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSaving}
               >
                 {themeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -246,9 +273,9 @@ const SettingsView = () => {
             <div className="flex items-center justify-end gap-3">
               <button
                 type="submit"
-                disabled={isSaving || isLoading || !canEditProfile}
+                disabled={isSaveDisabled}
                 className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
-                  isSaving || isLoading || !canEditProfile
+                  isSaveDisabled
                     ? "cursor-not-allowed bg-[color:var(--color-button-disabled-bg)] text-[color:var(--color-button-disabled-text)]"
                     : "bg-[color:var(--color-accent)] text-[color:var(--color-on-accent)] hover:bg-[color:var(--color-accent-hover)]"
                 }`}

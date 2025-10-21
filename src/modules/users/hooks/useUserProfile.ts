@@ -5,6 +5,7 @@ import { useAuth } from "@/modules/auth/AuthContext";
 import { ThemePreference } from "../types";
 
 const GUEST_ID_STORAGE_KEY = "anynote:guest-id";
+const GUEST_THEME_STORAGE_KEY = "anynote:guest-theme-preference"; 
 
 const createGuestId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -34,6 +35,7 @@ interface UseUserProfileResult {
     displayUsername: boolean;
     themePreference: ThemePreference;
   }) => Promise<void>;
+  setThemePreference: (theme: ThemePreference) => Promise<void>; 
 }
 
 const resolveTheme = (preference: ThemePreference): ThemePreference => {
@@ -56,26 +58,49 @@ const applyThemePreference = (preference: ThemePreference) => {
   document.documentElement.setAttribute("data-theme", resolved);
 };
 
+const normalizeTheme = (value: unknown): ThemePreference => {
+  if (value === "light" || value === "dark" || value === "system") {
+    return value;
+  }
+  return "system";
+};
+
 export const useUserProfile = (): UseUserProfileResult => {
   const { user, token, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guestId, setGuestId] = useState<string | null>(null);
+  const [guestTheme, setGuestTheme] = useState<ThemePreference>("system");
+  const updateGuestTheme = useCallback((newTheme: ThemePreference) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(GUEST_THEME_STORAGE_KEY, newTheme);
+      applyThemePreference(newTheme);
+      setGuestTheme(newTheme);
+    }
+  }, []);
 
   const resetThemeToSystem = useCallback(() => {
     if (typeof document === "undefined") {
       return;
     }
     applyThemePreference("system");
+    setGuestTheme("system"); 
   }, []);
 
   const fetchProfile = useCallback(async () => {
     if (!token) {
       setProfile(null);
-      resetThemeToSystem();
       setProfileLoading(false);
       setError(null);
+      if (typeof window !== "undefined") {
+        const storedTheme = window.localStorage.getItem(GUEST_THEME_STORAGE_KEY);
+        const resolvedTheme = normalizeTheme(storedTheme);
+        applyThemePreference(resolvedTheme);
+        setGuestTheme(resolvedTheme);
+      } else {
+        resetThemeToSystem();
+      }
       return;
     }
 
@@ -96,6 +121,9 @@ export const useUserProfile = (): UseUserProfileResult => {
       if (payload.user) {
         setProfile(payload.user);
         applyThemePreference(payload.user.themePreference);
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem(GUEST_THEME_STORAGE_KEY);
+        }
       }
     } catch (fetchError) {
       setError(
@@ -113,14 +141,8 @@ export const useUserProfile = (): UseUserProfileResult => {
       return;
     }
 
-    if (!token) {
-      setProfile(null);
-      resetThemeToSystem();
-      return;
-    }
-
     void fetchProfile();
-  }, [authLoading, token, fetchProfile, resetThemeToSystem]);
+  }, [authLoading, fetchProfile]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -148,7 +170,8 @@ export const useUserProfile = (): UseUserProfileResult => {
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
-      if (profile?.themePreference === "system") {
+      const currentPreference = profile?.themePreference ?? guestTheme;
+      if (currentPreference === "system") {
         applyThemePreference("system");
       }
     };
@@ -157,11 +180,12 @@ export const useUserProfile = (): UseUserProfileResult => {
     return () => {
       mediaQuery.removeEventListener("change", handleChange);
     };
-  }, [profile?.themePreference]);
+  }, [profile?.themePreference, guestTheme]);
 
   const refreshProfile = useCallback(async () => {
     await fetchProfile();
   }, [fetchProfile]);
+
 
   const updateProfile = useCallback(
     async ({
@@ -173,8 +197,12 @@ export const useUserProfile = (): UseUserProfileResult => {
       displayUsername: boolean;
       themePreference: ThemePreference;
     }) => {
-      if (!token || !user?.uid) {
-        throw new Error("User profile is not ready.");
+      if (!token) {
+        throw new Error("Cannot save username or display settings without signing in.");
+      }
+      
+      if (!user?.uid) {
+        throw new Error("User profile is not ready for authenticated update.");
       }
 
       setProfileLoading(true);
@@ -220,14 +248,52 @@ export const useUserProfile = (): UseUserProfileResult => {
     [token, user?.uid]
   );
 
+  const setThemePreference = useCallback(async (newTheme: ThemePreference) => {
+    applyThemePreference(newTheme); 
+
+    if (!token) {
+      updateGuestTheme(newTheme);
+      return;
+    }
+
+    if (!profile) {
+        updateGuestTheme(newTheme); 
+        return;
+    }
+    
+    try {
+        await updateProfile({
+            username: profile.username,
+            displayUsername: profile.displayUsername,
+            themePreference: newTheme,
+        });
+    } catch (error) {
+        console.error("Failed to save theme for authenticated user:", error);
+    }
+
+  }, [token, profile, updateGuestTheme, updateProfile]);
+
+
   const resolvedUserId = useMemo(() => user?.uid ?? guestId, [user?.uid, guestId]);
+
+  const guestProfile: UserProfile = useMemo(() => ({
+    userId: resolvedUserId ?? '',
+    username: null,
+    displayUsername: false,
+    themePreference: guestTheme,
+    followers: [],
+    following: [],
+  }), [resolvedUserId, guestTheme]);
+
+  const activeProfile = token ? profile : (resolvedUserId ? guestProfile : null); 
 
   return {
     userId: resolvedUserId,
-    profile,
+    profile: activeProfile, 
     isLoading: authLoading || profileLoading,
     error,
     refreshProfile,
     updateProfile,
+    setThemePreference, 
   };
 };
