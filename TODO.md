@@ -8,8 +8,6 @@ This document tracks current known issues, planned features, and recorded update
 
 These are issues confirmed but not yet fixed in the application.
 
-- **Missing Modal Escape:** There is currently no functionality to close the expanded note view/modal by pressing the `Esc` key.
-
 ---
 
 ## 📝 TODO (Future Development)
@@ -77,6 +75,14 @@ Documenting all major features and fixes implemented in the project thus far.
 | **Feature**  | Implemented outside click dismissal for the mobile navigation menu.                                                                                                       |
 | **Fix**      | Ensured the 3-line hamburger icon is correctly centered in the mobile view.                                                                                               |
 | **Fix**      | Hid the plus icon when the mobile navigation menu is expanded.                                                                                                            |
+
+### Version 0.4.0 - Create Note Modal and UI Enhancements
+
+| Type         | Description                                                                                                                                                               |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Feature**  | Refactored the "Create Note" section into a modal dialog with a blurry background.                                                                                      |
+| **Feature**  | Implemented `Escape` key dismissal for both the Expanded Note Modal and the new Create Note Modal.                                                                        |
+| **Fix**      | Prevented background scrolling when any modal is open in mobile view.                                                                                                     |
 
 ## Date 21-10-25
 

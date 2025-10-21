@@ -1,13 +1,27 @@
+"use client";
+
 import NavBar from "./components/NavBar";
 import NoteSection from "./components/NoteSection";
 import mockNotesData from "./data/mockNotes.json";
 import { Note } from "./data/Note";
+import CreateNoteModal from "./components/CreateNoteModal";
+import { useState } from "react";
 
 const mockNotes: Note[] = mockNotesData as Note[];
 
 export default function Home() {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
   const followingNotes = mockNotes.filter(note => note.isFollowing);
   const newPeopleNotes = mockNotes.filter(note => !note.isFollowing);
+
+  const handleOpenCreateModal = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
 
   return (
     <div className="p-8 pb-32">
@@ -28,7 +42,8 @@ export default function Home() {
         />
       </main>
 
-      <NavBar />
+      <NavBar onOpenCreateModal={handleOpenCreateModal} />
+      <CreateNoteModal isOpen={isCreateModalOpen} onClose={handleCloseCreateModal} />
     </div>
   );
 }

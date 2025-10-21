@@ -3,7 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
-export default function NavBar() {
+interface NavBarProps {
+  onOpenCreateModal: () => void;
+}
+
+export default function NavBar({ onOpenCreateModal }: NavBarProps) {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +43,11 @@ export default function NavBar() {
     }
   };
 
+  const handleCreateNoteClick = () => {
+    onOpenCreateModal();
+    setIsNavOpen(false);
+  };
+
   return (
     <div className={navContainerClass} ref={navRef}>
       <nav id="nev">
@@ -54,9 +63,9 @@ export default function NavBar() {
             </Link>
           </li>
           <li className="nav-item">
-            <Link href="/post" onClick={handleLinkClick}>
+            <button onClick={handleCreateNoteClick} className="w-full text-left">
               Create Note
-            </Link>
+            </button>
           </li>
           <li className="nav-item">
             <Link href="/about" onClick={handleLinkClick}>

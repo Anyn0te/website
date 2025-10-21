@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Image from 'next/image';
 import { sanitizeHtml } from '../utils/sanitizeHtml'; 
 
@@ -19,6 +19,24 @@ interface ExpandedNoteModalProps {
 
 const ExpandedNoteModal: React.FC<ExpandedNoteModalProps> = ({ note, onClose }) => {
   if (!note) return null;
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+
+    // Add/remove class to body to prevent scrolling
+    document.body.classList.add('modal-open');
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.classList.remove('modal-open');
+    };
+  }, [onClose]);
 
   const safeTitle = sanitizeHtml(note.title);
   const safeContent = sanitizeHtml(note.content);
