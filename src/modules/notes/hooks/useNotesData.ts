@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getMockNotes } from "../data/mockNotes";
 import { Note } from "../types";
 
 export interface UseNotesDataResult {
@@ -9,8 +8,8 @@ export interface UseNotesDataResult {
   reload: () => Promise<void>;
 }
 
-export const useNotesData = (): UseNotesDataResult => {
-  const [notes, setNotes] = useState<Note[]>(getMockNotes());
+export const useNotesData = (token: string | null): UseNotesDataResult => {
+  const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
@@ -23,11 +22,28 @@ export const useNotesData = (): UseNotesDataResult => {
   }, []);
 
   const fetchNotes = useCallback(async () => {
+    if (!token) {
+      if (isMountedRef.current) {
+        setNotes([]);
+        setIsLoading(false);
+        setError(null);
+      }
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/notes");
+      const response = await fetch(`/api/notes`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.status === 401) {
+        throw new Error("Sign in to view your personalized feed.");
+      }
+
       if (!response.ok) {
         throw new Error("Failed to load notes.");
       }
@@ -49,7 +65,7 @@ export const useNotesData = (): UseNotesDataResult => {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     void fetchNotes();

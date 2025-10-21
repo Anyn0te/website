@@ -2,11 +2,116 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Shadows+Into+Light&display=swap");
 
+:root {
+  color-scheme: light;
+  --color-app-bg: #f3f4ff;
+  --color-app-gradient: radial-gradient(120% 120% at 20% 10%, rgba(142, 220, 255, 0.32), transparent 65%), radial-gradient(140% 100% at 80% 0%, rgba(129, 140, 248, 0.35), transparent 55%), linear-gradient(135deg, #f7f8ff 0%, #eef2ff 45%, #ffffff 100%);
+  --color-panel-bg: rgba(255, 255, 255, 0.82);
+  --color-panel-border: rgba(99, 102, 241, 0.18);
+  --color-card-bg: rgba(255, 255, 255, 0.75);
+  --color-card-hover-bg: rgba(247, 250, 255, 0.92);
+  --color-card-border: rgba(99, 102, 241, 0.1);
+  --color-text-primary: #111827;
+  --color-text-body: #374151;
+  --color-text-muted: #64748b;
+  --color-text-accent: #4f46e5;
+  --color-chip-bg: rgba(99, 102, 241, 0.12);
+  --color-chip-text: #4338ca;
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  --color-on-accent: #ffffff;
+  --color-button-disabled-bg: rgba(148, 163, 184, 0.35);
+  --color-button-disabled-text: rgba(71, 85, 105, 0.85);
+  --color-input-bg: rgba(255, 255, 255, 0.9);
+  --color-divider: rgba(99, 102, 241, 0.22);
+  --color-modal-bg: rgba(250, 251, 255, 0.92);
+  --color-audio-bg: rgba(236, 240, 255, 0.85);
+  --color-button-muted-bg: rgba(240, 241, 255, 0.72);
+  --color-neutral-button-bg: rgba(229, 231, 235, 0.92);
+  --color-neutral-button-hover-bg: rgba(209, 213, 219, 0.98);
+  --color-neutral-button-text: #1f2937;
+  --color-glow: rgba(99, 102, 241, 0.18);
+  --color-nav-bg: linear-gradient(155deg, rgba(255, 255, 255, 0.94), rgba(236, 240, 255, 0.78));
+  --color-nav-border: rgba(99, 102, 241, 0.22);
+  --color-nav-shadow: rgba(99, 102, 241, 0.25);
+  --color-mobile-toggle-bg: linear-gradient(145deg, #6366f1, #8b5cf6);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-app-bg: #060817;
+  --color-app-gradient: radial-gradient(110% 110% at 20% -10%, rgba(56, 189, 248, 0.25), transparent 55%), radial-gradient(150% 120% at 90% 10%, rgba(45, 212, 191, 0.2), transparent 60%), linear-gradient(135deg, #040711 0%, #111827 45%, #1e1b4b 100%);
+  --color-panel-bg: rgba(15, 23, 42, 0.78);
+  --color-panel-border: rgba(148, 163, 184, 0.16);
+  --color-card-bg: rgba(30, 41, 59, 0.7);
+  --color-card-hover-bg: rgba(46, 58, 83, 0.82);
+  --color-card-border: rgba(129, 140, 248, 0.15);
+  --color-text-primary: #f8fafc;
+  --color-text-body: #d1d5db;
+  --color-text-muted: #94a3b8;
+  --color-text-accent: #c7d2fe;
+  --color-chip-bg: rgba(99, 102, 241, 0.28);
+  --color-chip-text: #e0e7ff;
+  --color-accent: #7c83ff;
+  --color-accent-hover: #6366f1;
+  --color-on-accent: #f8fafc;
+  --color-button-disabled-bg: rgba(255, 255, 255, 0.14);
+  --color-button-disabled-text: rgba(226, 232, 240, 0.45);
+  --color-input-bg: rgba(11, 15, 27, 0.86);
+  --color-divider: rgba(148, 163, 184, 0.28);
+  --color-modal-bg: rgba(13, 17, 35, 0.92);
+  --color-audio-bg: rgba(30, 41, 59, 0.85);
+  --color-button-muted-bg: rgba(30, 41, 59, 0.72);
+  --color-neutral-button-bg: rgba(51, 65, 85, 0.78);
+  --color-neutral-button-hover-bg: rgba(71, 85, 105, 0.88);
+  --color-neutral-button-text: #e2e8f0;
+  --color-glow: rgba(99, 102, 241, 0.28);
+  --color-nav-bg: linear-gradient(155deg, rgba(17, 24, 39, 0.88), rgba(30, 41, 59, 0.74));
+  --color-nav-border: rgba(129, 140, 248, 0.24);
+  --color-nav-shadow: rgba(56, 189, 248, 0.28);
+  --color-mobile-toggle-bg: linear-gradient(145deg, #5756d9, #7c83ff);
+}
+
 body {
   margin: 0;
   padding: 0;
+  position: relative;
+  min-height: 100vh;
   font-family: "Shadows Into Light", cursive;
-  background-color: #4a2f88;
+  background: var(--color-app-gradient);
+  color: var(--color-text-primary);
+  transition: background 0.6s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: -10vh -10vw;
+  background: var(--color-app-gradient);
+  filter: blur(120px);
+  opacity: 0.75;
+  z-index: -2;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 40%);
+  mix-blend-mode: screen;
+  opacity: 0.32;
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+:root[data-theme="dark"] body::after {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.22), rgba(14, 23, 42, 0.12), rgba(0, 0, 0, 0.4));
+  mix-blend-mode: normal;
+  opacity: 0.45;
 }
 
 body.modal-open {

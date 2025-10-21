@@ -1,10 +1,15 @@
+import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
-import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import { readNotes, writeNotes } from "@/modules/notes/server/noteRepository";
-import { Note, NoteMediaType } from "@/modules/notes/types";
+import { verifyIdToken } from "@/lib/firebase/admin";
+import {
+  appendNoteToUser,
+  getAggregatedNotesForUser,
+  getOrCreateUser,
+} from "@/modules/users/server/userRepository";
+import { NoteMedia, NoteMediaType, NoteVisibility, StoredNote } from "@/modules/notes/types";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_WORD_COUNT = 1000;
@@ -55,8 +60,36 @@ const countWords = (value: string) =>
     .split(/\s+/)
     .filter(Boolean).length;
 
-const saveMediaFiles = async (mediaFiles: File[]) => {
-  const storedMedia: Array<{ url: string; type: NoteMediaType }> = [];
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32) || "anonymous";
+
+const extractTokenFromRequest = (request: NextRequest) => {
+  const header = request.headers.get("authorization");
+  if (!header || !header.toLowerCase().startsWith("bearer ")) {
+    return null;
+  }
+  return header.split(" ")[1] ?? null;
+};
+
+const isAuthError = (error: unknown) =>
+  Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      typeof (error as { code: unknown }).code === "string" &&
+      ((error as { code: string }).code.startsWith("auth/") ||
+        (error as { code: string }).code === "permission-denied"),
+  );
+
+const saveMediaFiles = async (
+  mediaFiles: File[],
+  uploaderSlug: string
+): Promise<NoteMedia[]> => {
+  const storedMedia: NoteMedia[] = [];
 
   if (mediaFiles.length === 0) {
     return storedMedia;
@@ -79,7 +112,10 @@ const saveMediaFiles = async (mediaFiles: File[]) => {
     }
 
     const fileBuffer = Buffer.from(await mediaFile.arrayBuffer());
-    const fileName = `${randomUUID()}.${extension}`;
+    const timestamp = Date.now();
+    const randomFragment = randomUUID().slice(0, 8);
+    const baseName = slugify(uploaderSlug);
+    const fileName = `${baseName}-${timestamp}-${randomFragment}.${extension}`;
     const relativePath = `/media/${fileName}`;
 
     await fs.writeFile(path.join(MEDIA_DIRECTORY, fileName), fileBuffer);
@@ -91,11 +127,18 @@ const saveMediaFiles = async (mediaFiles: File[]) => {
 
 export async function POST(request: NextRequest) {
   try {
+    const token = extractTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const decoded = await verifyIdToken(token);
     const formData = await request.formData();
     const rawTitle = (formData.get("title") as string | null) ?? "";
     const content = (formData.get("content") as string | null) ?? "";
     const mediaFiles = formData.getAll("mediaFiles") as File[];
 
+    const user = await getOrCreateUser(decoded.uid);
     const wordCount = countWords(content);
 
     if (!content || wordCount === 0) {
@@ -112,23 +155,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const storedMedia = await saveMediaFiles(mediaFiles);
-    const notes = await readNotes();
+    const visibility: NoteVisibility =
+      user.displayUsername && user.username ? "public" : "anonymous";
+    const uploaderSlug = user.username ?? "anonymous";
+    const storedMedia = await saveMediaFiles(mediaFiles, uploaderSlug);
 
-    const newNote: Note = {
-      id: Date.now() + Math.random(),
+    const timestamp = new Date().toISOString();
+    const newNote: StoredNote = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       title: rawTitle.trim() || "Untitled Note",
       content,
-      isFollowing: false,
-      media: storedMedia.map((item) => ({
-        type: item.type,
-        url: item.url,
-      })),
+      visibility,
+      media: storedMedia,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
-    const updatedNotes = [newNote, ...notes];
-    await writeNotes(updatedNotes);
+    await appendNoteToUser(decoded.uid, newNote);
     revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidatePath("/followed");
 
     return NextResponse.json(
       {
@@ -140,6 +186,9 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("API Submission Error:", error);
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
     return NextResponse.json(
       {
         error:
@@ -152,12 +201,21 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const notes = await readNotes();
+    const token = extractTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const decoded = await verifyIdToken(token);
+    const notes = await getAggregatedNotesForUser(decoded.uid);
     return NextResponse.json({ notes }, { status: 200 });
   } catch (error) {
     console.error("API Read Error:", error);
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Unable to load notes." },
       { status: 500 }

@@ -1,5 +1,5 @@
-import NotesHomeView from "@/modules/notes/components/NotesHomeView";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <NotesHomeView />;
+  redirect("/dashboard");
 }

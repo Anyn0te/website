@@ -1,16 +1,40 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { Note } from "../types";
+
+const formatDateTime = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+};
 
 interface ExpandedNoteModalProps {
   note: Note | null;
   onClose: () => void;
+  onToggleFollow?: (authorId: string, shouldFollow: boolean) => Promise<void>;
+  followActionPending?: boolean;
 }
 
-const ExpandedNoteModal = ({ note, onClose }: ExpandedNoteModalProps) => {
+const ExpandedNoteModal = ({
+  note,
+  onClose,
+  onToggleFollow,
+  followActionPending = false,
+}: ExpandedNoteModalProps) => {
+  const [isFollowBusy, setIsFollowBusy] = useState(false);
+
+  useEffect(() => {
+    setIsFollowBusy(false);
+  }, [note?.id]);
   useEffect(() => {
     if (!note) {
       return;
@@ -37,6 +61,31 @@ const ExpandedNoteModal = ({ note, onClose }: ExpandedNoteModalProps) => {
 
   const safeTitle = sanitizeHtml(note.title);
   const safeContent = sanitizeHtml(note.content);
+  const authorLabel = note.authorName ? `@${note.authorName}` : "Anonymous";
+  const createdAtLabel = formatDateTime(note.createdAt);
+  const canFollowAuthor =
+    Boolean(note.authorName) && !note.isOwnNote && typeof onToggleFollow === "function";
+  const isFollowButtonDisabled = followActionPending || isFollowBusy;
+  const followButtonLabel = note.isFollowedAuthor
+    ? "Unfollow"
+    : note.authorName
+      ? `Follow ${note.authorName}`
+      : "Follow";
+
+  const handleFollowClick = async () => {
+    if (!canFollowAuthor || !note || !onToggleFollow) {
+      return;
+    }
+
+    setIsFollowBusy(true);
+    try {
+      await onToggleFollow(note.authorId, !note.isFollowedAuthor);
+    } catch (followError) {
+      console.error("Follow action failed", followError);
+    } finally {
+      setIsFollowBusy(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -46,21 +95,55 @@ const ExpandedNoteModal = ({ note, onClose }: ExpandedNoteModalProps) => {
       />
 
       <div
-        className="relative z-50 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white/95 p-6 shadow-2xl"
+        className="relative z-50 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)]/96 p-6 shadow-[0_40px_100px_var(--color-glow)] backdrop-blur-2xl transition-colors"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-3xl font-bold text-[#4a2f88] transition-colors hover:text-[#333]"
+          className="absolute right-4 top-4 text-3xl font-bold text-[color:var(--color-text-accent)] transition-colors hover:text-[color:var(--color-text-primary)]"
           aria-label="Close Note"
         >
           &times;
         </button>
 
-        <h2
-          className="mb-4 border-b-2 border-[#4a2f88]/50 p-3 text-3xl font-extrabold text-[#333]"
-          dangerouslySetInnerHTML={{ __html: safeTitle }}
-        />
+        <header className="mb-6 border-b border-[color:var(--color-divider)] pb-5">
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--color-text-muted)]">
+              {note.visibility === "public" ? "Visible Note" : "Anonymous Note"}
+            </p>
+            <h2
+              className="text-3xl font-extrabold text-[color:var(--color-text-primary)]"
+              dangerouslySetInnerHTML={{ __html: safeTitle }}
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[color:var(--color-text-accent)]">
+                {authorLabel}
+              </p>
+              <p className="text-xs text-[color:var(--color-text-muted)]">
+                {createdAtLabel}
+              </p>
+            </div>
+
+            {canFollowAuthor && (
+              <button
+                onClick={handleFollowClick}
+                disabled={isFollowButtonDisabled}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                  isFollowButtonDisabled
+                    ? "cursor-not-allowed bg-[color:var(--color-button-disabled-bg)] text-[color:var(--color-button-disabled-text)]"
+                    : note.isFollowedAuthor
+                      ? "bg-[color:var(--color-neutral-button-bg)] text-[color:var(--color-neutral-button-text)] shadow-[0_15px_30px_var(--color-glow)] hover:bg-[color:var(--color-neutral-button-hover-bg)]"
+                      : "bg-[color:var(--color-accent)] text-[color:var(--color-on-accent)] shadow-[0_20px_40px_var(--color-glow)] hover:bg-[color:var(--color-accent-hover)]"
+                }`}
+              >
+                {isFollowButtonDisabled ? "Updating..." : followButtonLabel}
+              </button>
+            )}
+          </div>
+        </header>
 
         {note.media.length > 0 && (
           <div className="mb-6 space-y-4">
@@ -88,7 +171,7 @@ const ExpandedNoteModal = ({ note, onClose }: ExpandedNoteModalProps) => {
                     key={`${note.id}-audio-${index}`}
                     controls
                     src={mediaItem.url}
-                    className="w-full rounded-xl bg-[#afa7a7] p-2"
+                    className="w-full rounded-xl bg-[color:var(--color-audio-bg)] p-2 text-[color:var(--color-text-primary)]"
                   >
                     Your browser does not support the audio element.
                   </audio>
@@ -100,7 +183,7 @@ const ExpandedNoteModal = ({ note, onClose }: ExpandedNoteModalProps) => {
           </div>
         )}
 
-        <div className="rounded-xl bg-[#f0f0f0dc] p-4 text-[#333] shadow-inner">
+        <div className="rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)]/95 p-5 text-[color:var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
           <p
             className="text-base leading-relaxed"
             dangerouslySetInnerHTML={{ __html: safeContent }}

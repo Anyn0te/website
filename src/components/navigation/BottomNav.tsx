@@ -16,15 +16,14 @@ const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
 
   const navItems = useMemo(
     () => [
-      { label: "Home", href: "/", icon: "house-door" },
       { label: "Dashboard", href: "/dashboard", icon: "speedometer2" },
+      { label: "Followed", href: "/followed", icon: "people" },
       {
         label: "Create Note",
         action: onOpenCreateModal,
         icon: "plus-circle",
         type: "action" as const,
       },
-      { label: "About Us", href: "/about", icon: "info-circle" },
       { label: "Settings", href: "/settings", icon: "gear" },
     ],
     [onOpenCreateModal],
@@ -70,9 +69,9 @@ const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
             const isAction = item.type === "action";
             const isActive =
               !isAction &&
-              (item.href === "/"
-                ? pathname === "/"
-                : pathname?.startsWith(item.href));
+              (pathname === item.href ||
+                pathname?.startsWith(`${item.href}/`) ||
+                (item.href === "/dashboard" && pathname === "/"));
             const navItemClassName = [
               styles.navItem,
               isActive ? styles.navItemActive : "",

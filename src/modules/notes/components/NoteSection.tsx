@@ -6,11 +6,20 @@ import NoteCard from "./NoteCard";
 interface NoteSectionProps {
   title: string;
   notes: Note[];
+  emptyMessage?: string;
+  onFollowStatusChange?: (targetUserId: string, shouldFollow: boolean) => Promise<void>;
+  followActionPending?: boolean;
 }
 
 const INITIAL_VISIBLE_NOTES = 5;
 
-const NoteSection = ({ title, notes }: NoteSectionProps) => {
+const NoteSection = ({
+  title,
+  notes,
+  emptyMessage,
+  onFollowStatusChange,
+  followActionPending = false,
+}: NoteSectionProps) => {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_NOTES);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
@@ -26,16 +35,16 @@ const NoteSection = ({ title, notes }: NoteSectionProps) => {
 
   return (
     <>
-      <section className="relative rounded-2xl bg-white/50 p-6 shadow-xl">
+      <section className="relative rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)]/90 p-6 shadow-[0_30px_70px_var(--color-glow)] backdrop-blur-xl transition-colors">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold uppercase text-[#333]">
+          <h2 className="text-xl font-semibold uppercase text-[color:var(--color-text-primary)]">
             {title}
           </h2>
 
           {canExpand && (
             <button
               onClick={handleExpandToggle}
-              className="inline-flex items-center gap-2 rounded-lg border border-[#4a2f88]/40 bg-white/90 px-3 py-1.5 text-sm font-semibold text-[#4a2f88] transition-colors hover:border-[#4a2f88] hover:text-[#333]"
+              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] px-3 py-1.5 text-sm font-semibold text-[color:var(--color-text-accent)] shadow-[0_10px_30px_var(--color-glow)] transition-all hover:border-[color:var(--color-text-accent)] hover:bg-[color:var(--color-card-hover-bg)] hover:text-[color:var(--color-text-primary)]"
               aria-label={
                 showAll
                   ? "Collapse section to initial view"
@@ -51,18 +60,37 @@ const NoteSection = ({ title, notes }: NoteSectionProps) => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 transition-all duration-500 ease-in-out sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {visibleNotes.map((note) => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              onClick={() => setSelectedNote(note)}
-            />
-          ))}
-        </div>
+        {notes.length === 0 ? (
+          <p className="rounded-xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)]/90 p-6 text-center text-sm font-medium text-[color:var(--color-text-muted)] backdrop-blur-md">
+            {emptyMessage ?? "No notes to display yet."}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 transition-all duration-500 ease-in-out sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {visibleNotes.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                onClick={() => setSelectedNote(note)}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
-      <ExpandedNoteModal note={selectedNote} onClose={() => setSelectedNote(null)} />
+      <ExpandedNoteModal
+        note={selectedNote}
+        onClose={() => setSelectedNote(null)}
+        onToggleFollow={async (authorId, shouldFollow) => {
+          if (!selectedNote) {
+            return;
+          }
+          await onFollowStatusChange?.(authorId, shouldFollow);
+          setSelectedNote((current) =>
+            current ? { ...current, isFollowedAuthor: shouldFollow } : current
+          );
+        }}
+        followActionPending={followActionPending}
+      />
     </>
   );
 };

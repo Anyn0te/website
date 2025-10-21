@@ -2,12 +2,14 @@ export interface CreateNotePayload {
   title: string;
   content: string;
   mediaFiles: File[];
+  token: string;
 }
 
 export const createNote = async ({
   title,
   content,
   mediaFiles,
+  token,
 }: CreateNotePayload): Promise<void> => {
   const formData = new FormData();
   formData.append("title", title);
@@ -19,6 +21,9 @@ export const createNote = async ({
 
   const response = await fetch("/api/notes", {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     body: formData,
   });
 

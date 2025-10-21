@@ -5,10 +5,27 @@ export interface NoteMedia {
   url?: string | null;
 }
 
-export interface Note {
-  id: number;
+export type NoteVisibility = "anonymous" | "public";
+
+export interface StoredNote {
+  id: string;
   title: string;
   content: string;
-  isFollowing: boolean;
   media: NoteMedia[];
+  visibility: NoteVisibility;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  media: NoteMedia[];
+  visibility: NoteVisibility;
+  createdAt: string;
+  authorId: string;
+  authorName: string | null;
+  isFollowedAuthor: boolean;
+  isOwnNote: boolean;
 }
