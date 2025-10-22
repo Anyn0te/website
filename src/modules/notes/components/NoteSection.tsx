@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Note } from "../types";
 import ExpandedNoteModal from "./ExpandedNoteModal";
 import NoteCard from "./NoteCard";
@@ -9,6 +10,7 @@ interface NoteSectionProps {
   emptyMessage?: string;
   onFollowStatusChange?: (targetUserId: string, shouldFollow: boolean) => Promise<void>;
   followActionPending?: boolean;
+  viewAllPath?: string;
 }
 
 const INITIAL_VISIBLE_NOTES = 5;
@@ -19,19 +21,39 @@ const NoteSection = ({
   emptyMessage,
   onFollowStatusChange,
   followActionPending = false,
+  viewAllPath,
 }: NoteSectionProps) => {
+  const router = useRouter();
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_NOTES);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
   const visibleNotes = notes.slice(0, visibleCount);
   const canExpand = notes.length > INITIAL_VISIBLE_NOTES;
-  const showAll = visibleCount >= notes.length;
+  const showAllLocally = visibleCount >= notes.length;
 
-  const handleExpandToggle = () => {
-    setVisibleCount((current) =>
-      current >= notes.length ? INITIAL_VISIBLE_NOTES : notes.length
-    );
-  };
+  let buttonLabel = "";
+  let buttonIcon = "";
+  let buttonAction: () => void;
+
+  if (showAllLocally && viewAllPath) {
+    buttonLabel = "Show all";
+    buttonIcon = "bi-box-arrow-up-right";
+    buttonAction = () => {
+      router.push(viewAllPath);
+    };
+  } else if (showAllLocally) {
+    buttonLabel = "Show less";
+    buttonIcon = "bi-chevron-up";
+    buttonAction = () => {
+      setVisibleCount(INITIAL_VISIBLE_NOTES);
+    };
+  } else {
+    buttonLabel = "Show all";
+    buttonIcon = "bi-chevron-down";
+    buttonAction = () => {
+      setVisibleCount(notes.length);
+    };
+  }
 
   return (
     <>
@@ -43,17 +65,23 @@ const NoteSection = ({
 
           {canExpand && (
             <button
-              onClick={handleExpandToggle}
-              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] px-3 py-1.5 text-sm font-semibold text-[color:var(--color-text-accent)] shadow-sm transition-all hover:border-[color:var(--color-text-accent)] hover:bg-[color:var(--color-card-hover-bg)] hover:text-[color:var(--color-text-primary)]"
+              onClick={buttonAction}
+              className={`inline-flex items-center gap-2 rounded-full border border-[color:var(--color-panel-border)] px-3 py-1.5 text-sm font-semibold shadow-sm transition-all ${
+                showAllLocally && viewAllPath
+                  ? "bg-[color:var(--color-accent)] text-[color:var(--color-on-accent)] hover:bg-[color:var(--color-accent-hover)] border-transparent"
+                  : "bg-[color:var(--color-button-muted-bg)] text-[color:var(--color-text-accent)] hover:border-[color:var(--color-text-accent)] hover:bg-[color:var(--color-card-hover-bg)] hover:text-[color:var(--color-text-primary)]"
+              }`}
               aria-label={
-                showAll
+                showAllLocally && viewAllPath
+                  ? `Expand section to the dedicated ${buttonLabel} page`
+                  : showAllLocally
                   ? "Collapse section to initial view"
                   : "Expand section to show all notes"
               }
             >
-              <span>{showAll ? "Show less" : "Show all"}</span>
+              <span>{buttonLabel}</span>
               <i
-                className={`bi ${showAll ? "bi-chevron-up" : "bi-chevron-down"}`}
+                className={`bi ${buttonIcon}`}
                 aria-hidden="true"
               />
             </button>

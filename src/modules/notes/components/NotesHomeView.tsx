@@ -10,7 +10,7 @@ import NoteSection from "./NoteSection";
 import CreateNoteModal from "./CreateNoteModal";
 
 interface NotesHomeViewProps {
-  variant: "dashboard" | "followed";
+  variant: "dashboard" | "followed" | "all" | "my";
 }
 
 const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
@@ -43,11 +43,30 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
     if (variant === "followed") {
       return notes.filter((note) => note.isFollowedAuthor);
     }
+    if (variant === "my") {
+        return myNotes;
+    }
     return notes;
-  }, [notes, variant]);
+  }, [notes, variant, myNotes]);
 
-  const pageHeading = variant === "followed" ? "Followed" : "Dashboard";
-  const sectionTitle = variant === "followed" ? "Followed Notes" : "All Notes";
+  const pageHeading = 
+    variant === "followed" 
+        ? "Followed" 
+        : variant === "all" 
+            ? "All Notes" 
+            : variant === "my"
+                ? "My Notes"
+                : "Dashboard";
+
+  const sectionTitle = 
+    variant === "followed" 
+        ? "Followed Notes" 
+        : variant === "all" 
+            ? "All Notes" 
+            : variant === "my"
+                ? "My Notes"
+                : "All Notes";
+
   const emptyMessage =
     variant === "followed"
       ? "Follow creators to see their notes here."
@@ -125,6 +144,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
                 title="My Notes"
                 notes={myNotes}
                 emptyMessage="It's good to talk you know? it may calm you a little."
+                viewAllPath="/minotes" 
             />
         )}
         
@@ -133,6 +153,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
             title={sectionTitle}
             notes={filteredNotes}
             emptyMessage={emptyMessage}
+            viewAllPath={variant === "dashboard" ? "/notes" : undefined} 
             onFollowStatusChange={
               followHandler && (variant === "followed" || variant === "dashboard")
                 ? followHandler
