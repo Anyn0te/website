@@ -32,6 +32,13 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   const [isFollowPending, setIsFollowPending] = useState(false);
   const [followError, setFollowError] = useState<string | null>(null);
 
+  const myNotes = useMemo(() => {
+    if (token) {
+        return notes.filter((note) => note.isOwnNote);
+    }
+    return [];
+  }, [notes, token]);
+
   const filteredNotes = useMemo(() => {
     if (variant === "followed") {
       return notes.filter((note) => note.isFollowedAuthor);
@@ -113,6 +120,14 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
           </section>
         )}
 
+        {!isLoading && !combinedError && variant === "dashboard" && token && (
+            <NoteSection
+                title="My Notes"
+                notes={myNotes}
+                emptyMessage="It's good to talk you know? it may calm you a little."
+            />
+        )}
+        
         {!isLoading && !combinedError && (
           <NoteSection
             title={sectionTitle}
