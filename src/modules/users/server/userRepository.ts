@@ -1,6 +1,14 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { Note, NoteMedia, NoteReactionType, NoteReactions, StoredNote } from "@/modules/notes/types";
+import {
+  Note,
+  NoteComment,
+  NoteMedia,
+  NoteReactionType,
+  NoteReactions,
+  StoredNote,
+  StoredNoteComment,
+} from "@/modules/notes/types";
 import {
   ThemePreference,
   UserRecord,
@@ -57,6 +65,46 @@ const summarizeReactionMap = (
   }
 
   return summary;
+};
+
+const normalizeParticipants = (participants: unknown): string[] => {
+  if (!Array.isArray(participants)) {
+    return [];
+  }
+
+  const normalized = new Set<string>();
+  for (const value of participants) {
+    if (typeof value === "string" && value.trim()) {
+      normalized.add(value.trim());
+    }
+  }
+
+  return Array.from(normalized);
+};
+
+const normalizeStoredComment = (
+  comment: StoredNoteComment,
+  noteAuthorId: string,
+): StoredNoteComment => {
+  const normalizedParticipants = normalizeParticipants(comment.participants);
+  if (!normalizedParticipants.includes(noteAuthorId)) {
+    normalizedParticipants.push(noteAuthorId);
+  }
+  if (!normalizedParticipants.includes(comment.authorId)) {
+    normalizedParticipants.push(comment.authorId);
+  }
+
+  return {
+    id: comment.id,
+    authorId: comment.authorId,
+    authorName: comment.authorName ?? null,
+    content: comment.content ?? "",
+    createdAt: comment.createdAt ?? new Date().toISOString(),
+    updatedAt: comment.updatedAt ?? comment.createdAt ?? new Date().toISOString(),
+    isPrivate: Boolean(comment.isPrivate),
+    participants: normalizedParticipants,
+    replyToCommentId: comment.replyToCommentId ?? null,
+  };
 };
 
 const getFilenameForUser = (user: { userId: string; username: string | null }) => {
@@ -128,13 +176,15 @@ const parseUserFile = (contents: string, userId: string): UserRecord => {
     themePreference: (parsed.themePreference as ThemePreference | undefined) ?? fallback.themePreference,
     followers: Array.isArray(parsed.followers) ? parsed.followers : fallback.followers,
     following: Array.isArray(parsed.following) ? parsed.following : fallback.following,
-    notes: Array.isArray(parsed.notes) ? parsed.notes.map(normalizeStoredNote) : fallback.notes,
+    notes: Array.isArray(parsed.notes)
+      ? parsed.notes.map((note) => normalizeStoredNote(note, userId))
+      : fallback.notes,
     createdAt: parsed.createdAt ?? fallback.createdAt,
     updatedAt: parsed.updatedAt ?? fallback.updatedAt,
   };
 };
 
-const normalizeStoredNote = (note: StoredNote): StoredNote => {
+const normalizeStoredNote = (note: StoredNote, ownerId: string): StoredNote => {
   const normalizedReactionMap = normalizeReactionMap(
     (note as { reactionMap?: Record<string, NoteReactionType>; reactionsByUser?: Record<string, NoteReactionType> }).reactionMap ??
       (note as { reactionsByUser?: Record<string, NoteReactionType> }).reactionsByUser ??
@@ -142,6 +192,18 @@ const normalizeStoredNote = (note: StoredNote): StoredNote => {
   );
 
   const reactions = summarizeReactionMap(normalizedReactionMap);
+  const normalizedComments = Array.isArray(
+    (note as { comments?: StoredNoteComment[] }).comments,
+  )
+    ? ((note as { comments: StoredNoteComment[] }).comments).map((comment) =>
+        normalizeStoredComment(comment, ownerId),
+      )
+    : [];
+
+  const commentsLocked =
+    typeof (note as { commentsLocked?: unknown }).commentsLocked === "boolean"
+      ? Boolean((note as { commentsLocked?: boolean }).commentsLocked)
+      : false;
 
   return {
     id: note.id,
@@ -158,6 +220,8 @@ const normalizeStoredNote = (note: StoredNote): StoredNote => {
     updatedAt: note.updatedAt ?? note.createdAt ?? new Date().toISOString(),
     reactions,
     reactionMap: normalizedReactionMap,
+    comments: normalizedComments,
+    commentsLocked,
   };
 };
 
@@ -182,7 +246,7 @@ export const saveUser = async (user: UserRecord): Promise<void> => {
     ...user,
     followers: [...new Set(user.followers)],
     following: [...new Set(user.following)],
-    notes: user.notes.map(normalizeStoredNote),
+    notes: user.notes.map((note) => normalizeStoredNote(note, user.userId)),
     updatedAt: new Date().toISOString(),
   };
 
@@ -290,9 +354,10 @@ export const updateUserSettings = async (
 
 export const appendNoteToUser = async (userId: string, note: StoredNote) => {
   const user = await getOrCreateUser(userId);
+  const normalizedNote = normalizeStoredNote(note, userId);
   const updatedUser: UserRecord = {
     ...user,
-    notes: [note, ...user.notes],
+    notes: [normalizedNote, ...user.notes],
   };
 
   await saveUser(updatedUser);
@@ -349,6 +414,252 @@ export const applyReactionToNote = async ({
   return updatedNote;
 };
 
+export const addCommentToNote = async ({
+  authorId,
+  noteId,
+  commenterId,
+  commenterName,
+  content,
+  isPrivate,
+  participantUserId,
+  replyToCommentId,
+}: {
+  authorId: string;
+  noteId: string;
+  commenterId: string;
+  commenterName: string | null;
+  content: string;
+  isPrivate: boolean;
+  participantUserId?: string | null;
+  replyToCommentId?: string | null;
+}): Promise<StoredNoteComment> => {
+  const author = await getOrCreateUser(authorId);
+  const noteIndex = author.notes.findIndex((candidate) => candidate.id === noteId);
+
+  if (noteIndex === -1) {
+    throw new Error("Note not found.");
+  }
+
+  const existingNote = author.notes[noteIndex];
+  if (existingNote.commentsLocked) {
+    throw new Error("Comments are locked for this note.");
+  }
+
+  const normalizedContent = content.trim();
+  if (!normalizedContent) {
+    throw new Error("Comment content is required.");
+  }
+
+  const participants = new Set<string>();
+  participants.add(authorId);
+  participants.add(commenterId);
+
+  if (isPrivate) {
+    if (!participantUserId || typeof participantUserId !== "string") {
+      throw new Error("Private comments require a participant user id.");
+    }
+    if (commenterId !== authorId && participantUserId !== authorId) {
+      throw new Error("Private inbox messages must involve the note owner.");
+    }
+    participants.add(participantUserId);
+  }
+
+  const timestamp = new Date().toISOString();
+  const newComment: StoredNoteComment = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    authorId: commenterId,
+    authorName: commenterName ?? null,
+    content: normalizedContent,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    isPrivate,
+    participants: Array.from(participants),
+    replyToCommentId: replyToCommentId ?? null,
+  };
+
+  const normalizedComment = normalizeStoredComment(newComment, authorId);
+
+  const updatedComments = [...existingNote.comments, normalizedComment].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+
+  const updatedNote: StoredNote = {
+    ...existingNote,
+    comments: updatedComments,
+    updatedAt: timestamp,
+  };
+
+  const updatedNotes = [...author.notes];
+  updatedNotes[noteIndex] = updatedNote;
+
+  const updatedAuthor: UserRecord = {
+    ...author,
+    notes: updatedNotes,
+  };
+
+  await saveUser(updatedAuthor);
+
+  return normalizedComment;
+};
+
+export const setNoteCommentsLocked = async ({
+  authorId,
+  noteId,
+  locked,
+}: {
+  authorId: string;
+  noteId: string;
+  locked: boolean;
+}): Promise<StoredNote> => {
+  const author = await getOrCreateUser(authorId);
+  const noteIndex = author.notes.findIndex((candidate) => candidate.id === noteId);
+
+  if (noteIndex === -1) {
+    throw new Error("Note not found.");
+  }
+
+  const existingNote = author.notes[noteIndex];
+  const updatedNote: StoredNote = {
+    ...existingNote,
+    commentsLocked: locked,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updatedNotes = [...author.notes];
+  updatedNotes[noteIndex] = updatedNote;
+
+  const updatedAuthor: UserRecord = {
+    ...author,
+    notes: updatedNotes,
+  };
+
+  await saveUser(updatedAuthor);
+
+  return updatedNote;
+};
+
+export const updateCommentOnNote = async ({
+  authorId,
+  noteId,
+  commentId,
+  editorId,
+  content,
+}: {
+  authorId: string;
+  noteId: string;
+  commentId: string;
+  editorId: string;
+  content: string;
+}): Promise<StoredNoteComment> => {
+  const author = await getOrCreateUser(authorId);
+  const noteIndex = author.notes.findIndex((candidate) => candidate.id === noteId);
+
+  if (noteIndex === -1) {
+    throw new Error("Note not found.");
+  }
+
+  const existingNote = author.notes[noteIndex];
+  const commentIndex = existingNote.comments.findIndex((comment) => comment.id === commentId);
+
+  if (commentIndex === -1) {
+    throw new Error("Comment not found.");
+  }
+
+  const trimmedContent = content.trim();
+  if (!trimmedContent) {
+    throw new Error("Updated comment cannot be empty.");
+  }
+
+  const existingComment = existingNote.comments[commentIndex];
+
+  const canEdit =
+    editorId === existingComment.authorId ||
+    editorId === authorId ||
+    (existingComment.isPrivate && existingComment.participants.includes(editorId));
+
+  if (!canEdit) {
+    throw new Error("You do not have permission to update this comment.");
+  }
+
+  const timestamp = new Date().toISOString();
+  const updatedComment: StoredNoteComment = {
+    ...existingComment,
+    content: trimmedContent,
+    updatedAt: timestamp,
+  };
+
+  const updatedComments = [...existingNote.comments];
+  updatedComments[commentIndex] = updatedComment;
+
+  const updatedNote: StoredNote = {
+    ...existingNote,
+    comments: updatedComments,
+    updatedAt: timestamp,
+  };
+
+  const updatedNotes = [...author.notes];
+  updatedNotes[noteIndex] = updatedNote;
+
+  const updatedAuthor: UserRecord = {
+    ...author,
+    notes: updatedNotes,
+  };
+
+  await saveUser(updatedAuthor);
+
+  return updatedComment;
+};
+
+export const deleteCommentFromNote = async ({
+  authorId,
+  noteId,
+  commentId,
+  actorId,
+}: {
+  authorId: string;
+  noteId: string;
+  commentId: string;
+  actorId: string;
+}): Promise<void> => {
+  const author = await getOrCreateUser(authorId);
+  const noteIndex = author.notes.findIndex((candidate) => candidate.id === noteId);
+
+  if (noteIndex === -1) {
+    throw new Error("Note not found.");
+  }
+
+  const existingNote = author.notes[noteIndex];
+  const commentIndex = existingNote.comments.findIndex((comment) => comment.id === commentId);
+
+  if (commentIndex === -1) {
+    throw new Error("Comment not found.");
+  }
+
+  const existingComment = existingNote.comments[commentIndex];
+  const canDelete = actorId === existingComment.authorId || actorId === authorId;
+
+  if (!canDelete) {
+    throw new Error("You do not have permission to delete this comment.");
+  }
+
+  const updatedComments = existingNote.comments.filter((comment) => comment.id !== commentId);
+  const updatedNote: StoredNote = {
+    ...existingNote,
+    comments: updatedComments,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updatedNotes = [...author.notes];
+  updatedNotes[noteIndex] = updatedNote;
+
+  const updatedAuthor: UserRecord = {
+    ...author,
+    notes: updatedNotes,
+  };
+
+  await saveUser(updatedAuthor);
+};
+
 export const setFollowingStatus = async (
   userId: string,
   targetUserId: string,
@@ -395,6 +706,37 @@ const sortNotesByDateDesc = (notes: StoredNote[]) =>
       new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()
   );
 
+const mapCommentsForViewer = (
+  comments: StoredNoteComment[],
+  viewerId: string | null,
+): NoteComment[] =>
+  [...comments]
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .map<NoteComment>((comment) => {
+      const isVisible =
+        !comment.isPrivate ||
+        (viewerId ? comment.participants.includes(viewerId) : false);
+
+      const isEditable = Boolean(
+        viewerId &&
+          (viewerId === comment.authorId || (comment.isPrivate && comment.participants.includes(viewerId))),
+      );
+
+      return {
+        id: comment.id,
+        authorId: comment.authorId,
+        authorName: comment.authorName ?? null,
+        content: isVisible ? comment.content : null,
+        createdAt: comment.createdAt,
+        updatedAt: comment.updatedAt,
+        isPrivate: comment.isPrivate,
+        isVisibleToViewer: isVisible,
+        participants: comment.participants,
+        replyToCommentId: comment.replyToCommentId ?? null,
+        isEditableByViewer: isEditable,
+      };
+    });
+
 export const getAggregatedNotesForUser = async (
   userId?: string | null,
 ): Promise<Note[]> => {
@@ -418,6 +760,9 @@ export const getAggregatedNotesForUser = async (
       const reactions = summarizeReactionMap(note.reactionMap);
       const viewerReaction =
         viewer?.userId ? note.reactionMap[viewer.userId] ?? null : null;
+      const publicCommentCount = note.comments.filter((comment) => !comment.isPrivate)
+        .length;
+      const comments = mapCommentsForViewer(note.comments, viewer?.userId ?? null);
 
       aggregated.push({
         id: note.id,
@@ -432,11 +777,17 @@ export const getAggregatedNotesForUser = async (
         isOwnNote: isViewer,
         reactions,
         viewerReaction,
+        comments,
+        publicCommentCount,
+        commentsLocked: note.commentsLocked ?? false,
       });
     }
   }
 
   aggregated.sort((a, b) => {
+    if (b.publicCommentCount !== a.publicCommentCount) {
+      return b.publicCommentCount - a.publicCommentCount;
+    }
     if (b.reactions.love !== a.reactions.love) {
       return b.reactions.love - a.reactions.love;
     }

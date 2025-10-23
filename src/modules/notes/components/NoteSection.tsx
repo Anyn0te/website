@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { Note, NoteReactionType } from "../types";
 import ExpandedNoteModal from "./ExpandedNoteModal";
 import NoteCard from "./NoteCard";
+import type { CommentSubmitPayload } from "./CommentThread";
 
 interface NoteSectionProps {
   title: string;
@@ -13,6 +14,16 @@ interface NoteSectionProps {
   viewAllPath?: string;
   onReactToNote?: (note: Note, reaction: NoteReactionType | null) => Promise<void> | void;
   isReactionPending?: (note: Note) => boolean;
+  onSubmitComment?: (note: Note, payload: CommentSubmitPayload) => Promise<void> | void;
+  commentActionPending?: (note: Note) => boolean;
+  onToggleCommentsLock?: (note: Note, locked: boolean) => Promise<void> | void;
+  viewerId?: string | null;
+  viewerDisplayName?: string | null;
+  commentLockActionPending?: (note: Note) => boolean;
+  onEditComment?: (note: Note, commentId: string, content: string) => Promise<void> | void;
+  onDeleteComment?: (note: Note, commentId: string) => Promise<void> | void;
+  isCommentEditPending?: (note: Note, commentId: string) => boolean;
+  isCommentDeletePending?: (note: Note, commentId: string) => boolean;
 }
 
 const INITIAL_VISIBLE_NOTES = 5;
@@ -26,6 +37,16 @@ const NoteSection = ({
   viewAllPath,
   onReactToNote,
   isReactionPending,
+  onSubmitComment,
+  commentActionPending,
+  onToggleCommentsLock,
+  viewerId,
+  viewerDisplayName,
+  commentLockActionPending,
+  onEditComment,
+  onDeleteComment,
+  isCommentEditPending,
+  isCommentDeletePending,
 }: NoteSectionProps) => {
   const router = useRouter();
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_NOTES);
@@ -112,30 +133,30 @@ const NoteSection = ({
           )}
         </div>
 
-            {notes.length === 0 ? (
-              <p className="rounded-xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-6 text-center text-sm font-medium text-[color:var(--color-text-muted)]">
-                {emptyMessage ?? "No notes to display yet."}
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 transition-all duration-500 ease-in-out sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {visibleNotes.map((note) => (
-                  <NoteCard
-                    key={note.id}
-                    note={note}
-                    onClick={() => setSelectedNote(note)}
-                    onReact={
-                      onReactToNote
-                        ? (reaction) => {
-                            void onReactToNote(note, reaction);
-                          }
-                        : undefined
-                    }
-                    isReacting={Boolean(isReactionPending?.(note))}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+        {notes.length === 0 ? (
+          <p className="rounded-xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-6 text-center text-sm font-medium text-[color:var(--color-text-muted)]">
+            {emptyMessage ?? "No notes to display yet."}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 transition-all duration-500 ease-in-out sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {visibleNotes.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                onClick={() => setSelectedNote(note)}
+                onReact={
+                  onReactToNote
+                    ? (reaction) => {
+                        void onReactToNote(note, reaction);
+                      }
+                    : undefined
+                }
+                isReacting={Boolean(isReactionPending?.(note))}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       <ExpandedNoteModal
         note={selectedNote}
@@ -159,6 +180,52 @@ const NoteSection = ({
         }
         reactionActionPending={
           selectedNote ? Boolean(isReactionPending?.(selectedNote)) : false
+        }
+        onSubmitComment={
+          onSubmitComment && selectedNote
+            ? async (payload) => {
+                await onSubmitComment(selectedNote, payload);
+              }
+            : undefined
+        }
+        commentActionPending={
+          selectedNote ? Boolean(commentActionPending?.(selectedNote)) : false
+        }
+        onToggleCommentsLock={
+          onToggleCommentsLock && selectedNote
+            ? async (locked) => {
+                await onToggleCommentsLock(selectedNote, locked);
+              }
+            : undefined
+        }
+        viewerId={viewerId}
+        viewerDisplayName={viewerDisplayName}
+        commentsLockPending={
+          selectedNote ? Boolean(commentLockActionPending?.(selectedNote)) : false
+        }
+        onEditComment={
+          onEditComment && selectedNote
+            ? async (commentId, updatePayload) => {
+                await onEditComment(selectedNote, commentId, updatePayload.content);
+              }
+            : undefined
+        }
+        onDeleteComment={
+          onDeleteComment && selectedNote
+            ? async (commentId) => {
+                await onDeleteComment(selectedNote, commentId);
+              }
+            : undefined
+        }
+        isCommentEditPending={
+          selectedNote && isCommentEditPending
+            ? (commentId) => isCommentEditPending(selectedNote, commentId)
+            : undefined
+        }
+        isCommentDeletePending={
+          selectedNote && isCommentDeletePending
+            ? (commentId) => isCommentDeletePending(selectedNote, commentId)
+            : undefined
         }
       />
     </>

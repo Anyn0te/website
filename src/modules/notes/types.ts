@@ -13,6 +13,32 @@ export interface NoteMedia {
 
 export type NoteVisibility = "anonymous" | "public";
 
+export interface StoredNoteComment {
+  id: string;
+  authorId: string;
+  authorName: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  isPrivate: boolean;
+  participants: string[];
+  replyToCommentId: string | null;
+}
+
+export interface NoteComment {
+  id: string;
+  authorId: string;
+  authorName: string | null;
+  content: string | null;
+  createdAt: string;
+  updatedAt: string;
+  isPrivate: boolean;
+  isVisibleToViewer: boolean;
+  participants: string[];
+  replyToCommentId: string | null;
+  isEditableByViewer: boolean;
+}
+
 export interface StoredNote {
   id: string;
   title: string;
@@ -23,6 +49,8 @@ export interface StoredNote {
   updatedAt: string;
   reactions: NoteReactions;
   reactionMap: Record<string, NoteReactionType>;
+  comments: StoredNoteComment[];
+  commentsLocked: boolean;
 }
 
 export interface Note {
@@ -38,4 +66,7 @@ export interface Note {
   isOwnNote: boolean;
   reactions: NoteReactions;
   viewerReaction: NoteReactionType | null;
+  comments: NoteComment[];
+  publicCommentCount: number;
+  commentsLocked: boolean;
 }

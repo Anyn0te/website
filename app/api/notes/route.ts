@@ -182,12 +182,14 @@ export async function POST(request: NextRequest) {
       media: storedMedia,
       createdAt: timestamp,
       updatedAt: timestamp,
-      reactions: {
-        love: 0,
-        dislike: 0,
-      },
-      reactionMap: {},
-    };
+    reactions: {
+      love: 0,
+      dislike: 0,
+    },
+    reactionMap: {},
+    comments: [],
+    commentsLocked: false,
+  };
 
     await appendNoteToUser(userId, newNote);
     revalidatePath("/");

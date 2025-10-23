@@ -8,7 +8,13 @@ import { updateFollowStatus } from "@/modules/users/services/followService";
 import { useAuth } from "@/modules/auth/AuthContext";
 import NoteSection from "./NoteSection";
 import CreateNoteModal from "./CreateNoteModal";
-import { reactToNote } from "../services/noteService";
+import {
+  addCommentToNote,
+  deleteCommentFromNote,
+  reactToNote,
+  setCommentsLocked,
+  updateCommentOnNote,
+} from "../services/noteService";
 import type { Note, NoteReactionType } from "../types";
 
 interface NotesHomeViewProps {
@@ -35,6 +41,19 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   const [followError, setFollowError] = useState<string | null>(null);
   const [reactionError, setReactionError] = useState<string | null>(null);
   const [pendingReactionKeys, setPendingReactionKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [pendingCommentKeys, setPendingCommentKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [pendingLockKeys, setPendingLockKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [pendingEditCommentIds, setPendingEditCommentIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [pendingDeleteCommentIds, setPendingDeleteCommentIds] = useState<Set<string>>(
     () => new Set(),
   );
 
@@ -83,7 +102,8 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         ? "You haven't created any notes yet. Start by sharing your first note."
         : "No notes yet. Be the first to share a thought.";
 
-  const combinedError = notesError ?? profileError ?? followError ?? reactionError;
+  const combinedError =
+    notesError ?? profileError ?? followError ?? reactionError ?? commentError;
   const isLoading = isNotesLoading || (token ? isProfileLoading : false);
 
   const handleFollowStatusChange = useCallback(
@@ -156,9 +176,197 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
     [userId, token, reload],
   );
 
+  const handleSubmitComment = useCallback(
+    async (
+      note: Note,
+      payload: {
+        content: string;
+        isPrivate: boolean;
+        participantUserId?: string | null;
+        replyToCommentId?: string | null;
+      },
+    ) => {
+      if (!userId) {
+        const message = "Unable to comment because the viewer is not identified yet.";
+        setCommentError(message);
+        throw new Error(message);
+      }
+
+      const key = `${note.authorId}::${note.id}`;
+      const commenterName =
+        profile?.displayUsername && profile.username ? profile.username : null;
+
+      setCommentError(null);
+      setPendingCommentKeys((previous) => {
+        const next = new Set(previous);
+        next.add(key);
+        return next;
+      });
+
+      try {
+        await addCommentToNote({
+          noteId: note.id,
+          authorId: note.authorId,
+          content: payload.content,
+          isPrivate: payload.isPrivate,
+          participantUserId: payload.participantUserId,
+          replyToCommentId: payload.replyToCommentId,
+          token,
+          userId,
+          commenterName,
+        });
+        await reload();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to submit comment.";
+        setCommentError(message);
+        throw new Error(message);
+      } finally {
+        setPendingCommentKeys((previous) => {
+          const next = new Set(previous);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [userId, token, reload, profile?.displayUsername, profile?.username],
+  );
+
+  const handleToggleCommentsLock = useCallback(
+    async (note: Note, locked: boolean) => {
+      if (!userId) {
+        const message = "Unable to update settings without an identifier.";
+        setCommentError(message);
+        throw new Error(message);
+      }
+
+      const key = `${note.authorId}::${note.id}`;
+      setCommentError(null);
+      setPendingLockKeys((previous) => {
+        const next = new Set(previous);
+        next.add(key);
+        return next;
+      });
+
+      try {
+        await setCommentsLocked({
+          noteId: note.id,
+          authorId: note.authorId,
+          locked,
+          token,
+          userId,
+        });
+        await reload();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to update comment settings.";
+        setCommentError(message);
+        throw new Error(message);
+      } finally {
+        setPendingLockKeys((previous) => {
+          const next = new Set(previous);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [userId, token, reload],
+  );
+
+  const handleEditComment = useCallback(
+    async (note: Note, commentId: string, content: string) => {
+      if (!userId) {
+        const message = "Unable to update thoughts without an identifier.";
+        setCommentError(message);
+        throw new Error(message);
+      }
+
+      setCommentError(null);
+      setPendingEditCommentIds((previous) => {
+        const next = new Set(previous);
+        next.add(commentId);
+        return next;
+      });
+
+      try {
+        await updateCommentOnNote({
+          noteId: note.id,
+          authorId: note.authorId,
+          commentId,
+          content,
+          token,
+          userId,
+        });
+        await reload();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to update thought.";
+        setCommentError(message);
+        throw new Error(message);
+      } finally {
+        setPendingEditCommentIds((previous) => {
+          const next = new Set(previous);
+          next.delete(commentId);
+          return next;
+        });
+      }
+    },
+    [userId, token, reload],
+  );
+
+  const handleDeleteComment = useCallback(
+    async (note: Note, commentId: string) => {
+      if (!userId) {
+        const message = "Unable to delete thoughts without an identifier.";
+        setCommentError(message);
+        throw new Error(message);
+      }
+
+      setCommentError(null);
+      setPendingDeleteCommentIds((previous) => {
+        const next = new Set(previous);
+        next.add(commentId);
+        return next;
+      });
+
+      try {
+        await deleteCommentFromNote({
+          noteId: note.id,
+          authorId: note.authorId,
+          commentId,
+          token,
+          userId,
+        });
+        await reload();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to delete thought.";
+        setCommentError(message);
+        throw new Error(message);
+      } finally {
+        setPendingDeleteCommentIds((previous) => {
+          const next = new Set(previous);
+          next.delete(commentId);
+          return next;
+        });
+      }
+    },
+    [userId, token, reload],
+  );
+
   const handleOpenCreateModal = () => {
     setIsCreateModalOpen(true);
   };
+
+  const isCommentEditPending = useCallback(
+    (_note: Note, commentId: string) => pendingEditCommentIds.has(commentId),
+    [pendingEditCommentIds],
+  );
+
+  const isCommentDeletePending = useCallback(
+    (_note: Note, commentId: string) => pendingDeleteCommentIds.has(commentId),
+    [pendingDeleteCommentIds],
+  );
 
   return (
     <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-32 transition-colors">
@@ -205,6 +413,24 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
             isReactionPending={(note) =>
               pendingReactionKeys.has(`${note.authorId}::${note.id}`)
             }
+            onSubmitComment={handleSubmitComment}
+            commentActionPending={(note) =>
+              pendingCommentKeys.has(`${note.authorId}::${note.id}`)
+            }
+            onToggleCommentsLock={handleToggleCommentsLock}
+            commentLockActionPending={(note) =>
+              pendingLockKeys.has(`${note.authorId}::${note.id}`)
+            }
+            viewerId={userId ?? null}
+            viewerDisplayName={
+              profile?.displayUsername && profile?.username
+                ? `@${profile.username}`
+                : null
+            }
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
+            isCommentEditPending={isCommentEditPending}
+            isCommentDeletePending={isCommentDeletePending}
           />
         )}
       </main>

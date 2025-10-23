@@ -4,6 +4,10 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { Note, NoteReactionType } from "../types";
+import CommentThread, {
+  CommentSubmitPayload,
+  CommentUpdatePayload,
+} from "./CommentThread";
 
 const formatDateTime = (value: string) => {
   const parsed = new Date(value);
@@ -24,6 +28,16 @@ interface ExpandedNoteModalProps {
   followActionPending?: boolean;
   onReact?: (reaction: NoteReactionType | null) => Promise<void> | void;
   reactionActionPending?: boolean;
+  onSubmitComment?: (payload: CommentSubmitPayload) => Promise<void> | void;
+  commentActionPending?: boolean;
+  onToggleCommentsLock?: (locked: boolean) => Promise<void> | void;
+  viewerId?: string | null;
+  viewerDisplayName?: string | null;
+  commentsLockPending?: boolean;
+  onEditComment?: (commentId: string, payload: CommentUpdatePayload) => Promise<void> | void;
+  onDeleteComment?: (commentId: string) => Promise<void> | void;
+  isCommentEditPending?: (commentId: string) => boolean;
+  isCommentDeletePending?: (commentId: string) => boolean;
 }
 
 const ExpandedNoteModal = ({
@@ -33,12 +47,23 @@ const ExpandedNoteModal = ({
   followActionPending = false,
   onReact,
   reactionActionPending = false,
+  onSubmitComment,
+  commentActionPending = false,
+  onToggleCommentsLock,
+  viewerId,
+  viewerDisplayName,
+  commentsLockPending = false,
+  onEditComment,
+  onDeleteComment,
+  isCommentEditPending,
+  isCommentDeletePending,
 }: ExpandedNoteModalProps) => {
   const [isFollowBusy, setIsFollowBusy] = useState(false);
 
   useEffect(() => {
     setIsFollowBusy(false);
   }, [note?.id]);
+
   useEffect(() => {
     if (!note) {
       return;
@@ -75,6 +100,7 @@ const ExpandedNoteModal = ({
     : note.authorName
       ? `Follow ${note.authorName}`
       : "Follow";
+  const totalPublicComments = note.publicCommentCount;
   const isLoved = note.viewerReaction === "love";
   const isDisliked = note.viewerReaction === "dislike";
 
@@ -207,7 +233,7 @@ const ExpandedNoteModal = ({
 
         <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--color-text-muted)]">
-            Reactions
+            Feelings
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -239,6 +265,25 @@ const ExpandedNoteModal = ({
               <span>{note.reactions.dislike}</span>
             </button>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <CommentThread
+            comments={note.comments}
+            viewerId={viewerId ?? null}
+            viewerDisplayName={viewerDisplayName ?? null}
+            noteAuthorId={note.authorId}
+            noteCommentsLocked={note.commentsLocked}
+            publicCommentCount={totalPublicComments}
+            createActionPending={commentActionPending ?? false}
+            lockActionPending={commentsLockPending}
+            onSubmitComment={onSubmitComment}
+            onToggleCommentsLock={onToggleCommentsLock}
+            onEditComment={onEditComment}
+            onDeleteComment={onDeleteComment}
+            isEditPending={isCommentEditPending}
+            isDeletePending={isCommentDeletePending}
+          />
         </div>
       </div>
     </div>

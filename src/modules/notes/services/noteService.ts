@@ -85,3 +85,158 @@ export const reactToNote = async ({
     viewerReaction: payload.viewerReaction ?? null,
   };
 };
+
+export interface AddCommentPayload {
+  noteId: string;
+  authorId: string;
+  content: string;
+  isPrivate: boolean;
+  participantUserId?: string | null;
+  replyToCommentId?: string | null;
+  token?: string | null;
+  userId: string;
+  commenterName: string | null;
+}
+
+export const addCommentToNote = async ({
+  noteId,
+  authorId,
+  content,
+  isPrivate,
+  participantUserId,
+  replyToCommentId,
+  token,
+  userId,
+  commenterName,
+}: AddCommentPayload): Promise<void> => {
+  const response = await fetch("/api/notes/comment", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      noteId,
+      authorId,
+      content,
+      isPrivate,
+      participantUserId: participantUserId ?? null,
+      replyToCommentId: replyToCommentId ?? null,
+      commenterName,
+      userId,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json()) as { error?: string };
+    throw new Error(payload.error ?? "Unable to submit comment.");
+  }
+};
+
+export interface UpdateCommentPayload {
+  noteId: string;
+  authorId: string;
+  commentId: string;
+  content: string;
+  token?: string | null;
+  userId: string;
+}
+
+export const updateCommentOnNote = async ({
+  noteId,
+  authorId,
+  commentId,
+  content,
+  token,
+  userId,
+}: UpdateCommentPayload): Promise<void> => {
+  const response = await fetch("/api/notes/comment", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      noteId,
+      authorId,
+      commentId,
+      content,
+      userId,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json()) as { error?: string };
+    throw new Error(payload.error ?? "Unable to update comment.");
+  }
+};
+
+export interface DeleteCommentPayload {
+  noteId: string;
+  authorId: string;
+  commentId: string;
+  token?: string | null;
+  userId: string;
+}
+
+export const deleteCommentFromNote = async ({
+  noteId,
+  authorId,
+  commentId,
+  token,
+  userId,
+}: DeleteCommentPayload): Promise<void> => {
+  const response = await fetch("/api/notes/comment", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      noteId,
+      authorId,
+      commentId,
+      userId,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json()) as { error?: string };
+    throw new Error(payload.error ?? "Unable to delete comment.");
+  }
+};
+
+export interface SetCommentsLockedPayload {
+  noteId: string;
+  authorId: string;
+  locked: boolean;
+  token?: string | null;
+  userId: string;
+}
+
+export const setCommentsLocked = async ({
+  noteId,
+  authorId,
+  locked,
+  token,
+  userId,
+}: SetCommentsLockedPayload): Promise<void> => {
+  const response = await fetch("/api/notes/comment/lock", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      noteId,
+      authorId,
+      locked,
+      userId,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json()) as { error?: string };
+    throw new Error(payload.error ?? "Unable to update comment settings.");
+  }
+};

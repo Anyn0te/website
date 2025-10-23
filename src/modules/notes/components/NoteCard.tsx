@@ -19,6 +19,8 @@ const NoteCard = ({ note, onClick, onReact, isReacting = false }: NoteCardProps)
   const authorBadge = note.isOwnNote ? "You" : note.isFollowedAuthor ? "Following" : null;
   const isLoved = note.viewerReaction === "love";
   const isDisliked = note.viewerReaction === "dislike";
+  const commentCount = note.publicCommentCount;
+  const commentsLocked = note.commentsLocked;
 
   const handleReactionClick = (event: MouseEvent<HTMLButtonElement>, reaction: NoteReactionType) => {
     event.stopPropagation();
@@ -65,7 +67,24 @@ const NoteCard = ({ note, onClick, onReact, isReacting = false }: NoteCardProps)
         </span>
       )}
 
-      <div className="mt-4 flex items-center justify-between gap-2">
+      <div className="mt-3 flex items-center justify-between text-xs font-semibold text-[color:var(--color-text-muted)]">
+        <span className="inline-flex items-center gap-1" aria-label={`Thoughts ${commentCount}`}>
+          <span aria-hidden="true">💬</span>
+          <span>{commentCount} Thoughts</span>
+        </span>
+        {commentsLocked && (
+          <span className="inline-flex items-center gap-1 text-[color:var(--color-text-accent)]">
+            <span aria-hidden="true">🔒</span>
+            <span>Thoughts Locked</span>
+          </span>
+        )}
+      </div>
+
+      <div className="mt-2 flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-wide text-[color:var(--color-text-muted)]">
+        <span>Feelings</span>
+      </div>
+
+      <div className="mt-1 flex items-center justify-between gap-2">
         <button
           type="button"
           className={`flex flex-1 items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
