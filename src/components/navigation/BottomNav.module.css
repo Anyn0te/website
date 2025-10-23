@@ -19,12 +19,35 @@
   border-radius: 999px;
   display: flex;
   align-items: center;
+  gap: 12px;
   justify-content: center;
   gap: 16px;
   background: var(--color-nav-bg);
   border: 1px solid var(--color-nav-border);
   box-shadow: 0 12px 24px var(--color-nav-shadow);
   transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.desktopBar {
+  position: fixed;
+  top: 24px;
+  right: 32px;
+  z-index: 55;
+  display: none;
+  pointer-events: auto;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--color-nav-bg);
+  border: 1px solid var(--color-nav-border);
+  box-shadow: 0 12px 24px var(--color-nav-shadow);
+  align-items: center;
+}
+
+.mobileControls {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
 }
 
 .nav:hover {
@@ -191,6 +214,15 @@
     align-items: flex-end;
   }
 
+  .mobileControls {
+    display: flex;
+    position: fixed;
+    bottom: 112px;
+    right: 20px;
+    gap: 10px;
+    z-index: 52;
+  }
+
   .navItemDesktopMore {
       display: none;
   }
@@ -302,6 +334,12 @@
     transform: rotate(45deg);
     background: var(--color-accent-hover);
     box-shadow: 0 16px 28px var(--color-nav-shadow);
+  }
+}
+
+@media (min-width: 769px) {
+  .desktopBar {
+    display: flex;
   }
 }
 

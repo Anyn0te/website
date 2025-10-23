@@ -4,17 +4,28 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import styles from "./BottomNav.module.css";
+import { NotificationBell } from "@/modules/notifications/components/NotificationBell";
+import { useNotifications } from "@/modules/notifications/hooks/useNotifications";
 
 interface BottomNavProps {
   onOpenCreateModal: () => void;
+  viewerId?: string | null;
+  token?: string | null;
 }
 
-const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
+const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomNavProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false); 
   const navRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLLIElement>(null); 
   const pathname = usePathname();
+  const {
+    notifications,
+    unreadCount,
+    isLoading: notificationsLoading,
+    markAllAsRead,
+    refresh,
+  } = useNotifications(viewerId, token);
 
   const navItems = useMemo(
     () => [
@@ -80,9 +91,20 @@ const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
     .trim();
 
   return (
-    <div className={styles.container} ref={navRef} data-open={isOpen}>
-      <nav className={navClassName} aria-label="Primary navigation">
-        <ul className={itemsClassName} id="primary-navigation">
+    <>
+      <div className={styles.desktopBar}>
+        <NotificationBell
+          notifications={notifications}
+          unreadCount={unreadCount}
+          isLoading={notificationsLoading}
+          onMarkAllAsRead={markAllAsRead}
+          onRefresh={refresh}
+          anchor="desktop"
+        />
+      </div>
+      <div className={styles.container} ref={navRef} data-open={isOpen}>
+        <nav className={navClassName} aria-label="Primary navigation">
+          <ul className={itemsClassName} id="primary-navigation">
           {navItems.map((item) => {
             const isAction = item.type === "action";
             const isActive =
@@ -178,20 +200,31 @@ const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
           </li>
         </ul>
       </nav>
-      <button
-        aria-controls="primary-navigation"
-        aria-expanded={isOpen}
-        aria-label={isOpen ? "Close menu" : "Open menu"}
-        className={styles.menuToggle}
-        onClick={() => setIsOpen((prev) => !prev)}
-        type="button"
-      >
-        <span
-          aria-hidden="true"
-          className={`bi ${isOpen ? "bi-x-lg" : "bi-list"}`}
+      </div>
+      <div className={styles.mobileControls}>
+        <NotificationBell
+          notifications={notifications}
+          unreadCount={unreadCount}
+          isLoading={notificationsLoading}
+          onMarkAllAsRead={markAllAsRead}
+          onRefresh={refresh}
+          anchor="mobile"
         />
-      </button>
-    </div>
+        <button
+          aria-controls="primary-navigation"
+          aria-expanded={isOpen}
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+          className={styles.menuToggle}
+          onClick={() => setIsOpen((prev) => !prev)}
+          type="button"
+        >
+          <span
+            aria-hidden="true"
+            className={`bi ${isOpen ? "bi-x-lg" : "bi-list"}`}
+          />
+        </button>
+      </div>
+    </>
   );
 };
 

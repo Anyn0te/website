@@ -9,6 +9,7 @@ import {
   StoredNote,
   StoredNoteComment,
 } from "@/modules/notes/types";
+import { StoredNotification } from "@/modules/notifications/types";
 import {
   ThemePreference,
   UserRecord,
@@ -17,6 +18,7 @@ import {
 
 const STORAGE_ROOT = path.join(process.cwd(), "storage");
 const USERS_DIRECTORY = path.join(STORAGE_ROOT, "users");
+const MAX_NOTIFICATIONS = 100;
 
 const slugify = (value: string) =>
   value
@@ -107,6 +109,46 @@ const normalizeStoredComment = (
   };
 };
 
+const normalizeStoredNotification = (
+  notification: StoredNotification,
+): StoredNotification => {
+  const isReaction = notification.type === "reaction";
+  const isComment = notification.type === "comment";
+
+  const reactionValue = notification.reaction;
+  const normalizedReaction: NoteReactionType | null =
+    reactionValue === "love" || reactionValue === "dislike" ? reactionValue : null;
+
+  return {
+    id: notification.id,
+    type: isReaction ? "reaction" : isComment ? "comment" : "comment",
+    noteId: notification.noteId,
+    noteTitle: notification.noteTitle ?? "",
+    actorId: notification.actorId,
+    actorName: notification.actorName ?? null,
+    reaction: normalizedReaction,
+    commentId: notification.commentId ?? null,
+    isPrivate: Boolean(notification.isPrivate),
+    createdAt: notification.createdAt ?? new Date().toISOString(),
+    read: Boolean(notification.read),
+  };
+};
+
+const createNotificationId = () =>
+  `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const resolveDisplayName = (user: UserRecord | null): string | null => {
+  if (!user) {
+    return null;
+  }
+
+  if (user.displayUsername && user.username) {
+    return `@${user.username}`;
+  }
+
+  return null;
+};
+
 const getFilenameForUser = (user: { userId: string; username: string | null }) => {
   if (user.username) {
     const slug = slugify(user.username);
@@ -134,6 +176,7 @@ const createDefaultUser = (userId: string): UserRecord => {
     followers: [],
     following: [],
     notes: [],
+    notifications: [],
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -179,6 +222,11 @@ const parseUserFile = (contents: string, userId: string): UserRecord => {
     notes: Array.isArray(parsed.notes)
       ? parsed.notes.map((note) => normalizeStoredNote(note, userId))
       : fallback.notes,
+    notifications: Array.isArray(parsed.notifications)
+      ? parsed.notifications
+          .map((notification) => normalizeStoredNotification(notification))
+          .slice(0, MAX_NOTIFICATIONS)
+      : fallback.notifications,
     createdAt: parsed.createdAt ?? fallback.createdAt,
     updatedAt: parsed.updatedAt ?? fallback.updatedAt,
   };
@@ -247,6 +295,9 @@ export const saveUser = async (user: UserRecord): Promise<void> => {
     followers: [...new Set(user.followers)],
     following: [...new Set(user.following)],
     notes: user.notes.map((note) => normalizeStoredNote(note, user.userId)),
+    notifications: user.notifications
+      .map((notification) => normalizeStoredNotification(notification))
+      .slice(0, MAX_NOTIFICATIONS),
     updatedAt: new Date().toISOString(),
   };
 
@@ -382,6 +433,7 @@ export const applyReactionToNote = async ({
   }
 
   const existingNote = author.notes[noteIndex];
+  const previousReaction = existingNote.reactionMap[reactorId] ?? null;
   const reactionMap = {
     ...existingNote.reactionMap,
   };
@@ -410,6 +462,25 @@ export const applyReactionToNote = async ({
   };
 
   await saveUser(updatedAuthor);
+
+  if (
+    reaction !== null &&
+    reaction !== previousReaction &&
+    reactorId !== authorId
+  ) {
+    const reactorRecord = await getOrCreateUser(reactorId);
+    const actorDisplayName = resolveDisplayName(reactorRecord) ?? "Someone";
+    const noteTitle = existingNote.title ?? "Untitled Note";
+
+    await addNotificationToUser(authorId, {
+      type: "reaction",
+      noteId,
+      noteTitle,
+      actorId: reactorId,
+      actorName: actorDisplayName,
+      reaction,
+    });
+  }
 
   return updatedNote;
 };
@@ -498,6 +569,52 @@ export const addCommentToNote = async ({
   };
 
   await saveUser(updatedAuthor);
+
+  const notificationTargets = new Map<string, { isPrivate: boolean; commentId: string | null }>();
+  const actorRecord = commenterId ? await getOrCreateUser(commenterId) : null;
+  const actorDisplayName = commenterName
+    ? commenterName.startsWith("@")
+      ? commenterName
+      : `@${commenterName}`
+    : resolveDisplayName(actorRecord) ?? "Someone";
+  const noteTitle = existingNote.title ?? "Untitled Note";
+
+  if (commenterId !== authorId) {
+    notificationTargets.set(authorId, { isPrivate, commentId: normalizedComment.id });
+  }
+
+  if (replyToCommentId) {
+    const parentComment = existingNote.comments.find((comment) => comment.id === replyToCommentId);
+    if (parentComment) {
+      const parentAuthorId = parentComment.authorId;
+      const shouldNotifyParent =
+        parentAuthorId &&
+        parentAuthorId !== commenterId &&
+        parentAuthorId !== authorId &&
+        (!isPrivate || normalizedComment.participants.includes(parentAuthorId));
+
+      if (shouldNotifyParent) {
+        notificationTargets.set(parentAuthorId, {
+          isPrivate,
+          commentId: normalizedComment.id,
+        });
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(notificationTargets.entries()).map(([targetId, meta]) =>
+      addNotificationToUser(targetId, {
+        type: "comment",
+        noteId,
+        noteTitle,
+        actorId: commenterId,
+        actorName: actorDisplayName,
+        commentId: meta.commentId,
+        isPrivate: meta.isPrivate,
+      }),
+    ),
+  );
 
   return normalizedComment;
 };
@@ -658,6 +775,75 @@ export const deleteCommentFromNote = async ({
   };
 
   await saveUser(updatedAuthor);
+};
+
+const addNotificationToUser = async (
+  userId: string,
+  notification: Omit<StoredNotification, "id" | "createdAt" | "read"> & {
+    id?: string;
+    createdAt?: string;
+    read?: boolean;
+  },
+) => {
+  const user = await getOrCreateUser(userId);
+  const notificationId = notification.id ?? createNotificationId();
+  const payload: StoredNotification = normalizeStoredNotification({
+    ...notification,
+    id: notificationId,
+    createdAt: notification.createdAt ?? new Date().toISOString(),
+    read: notification.read ?? false,
+  });
+
+  const existingWithoutDuplicate = user.notifications.filter(
+    (item) => item.id !== payload.id,
+  );
+  const updatedUser: UserRecord = {
+    ...user,
+    notifications: [payload, ...existingWithoutDuplicate].slice(0, MAX_NOTIFICATIONS),
+  };
+
+  await saveUser(updatedUser);
+};
+
+export const getNotificationsForUser = async (
+  userId: string,
+): Promise<StoredNotification[]> => {
+  const user = await getOrCreateUser(userId);
+  return [...user.notifications].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+};
+
+export const markNotificationsAsRead = async (
+  userId: string,
+  notificationIds?: string[],
+): Promise<StoredNotification[]> => {
+  const user = await getOrCreateUser(userId);
+  const idSet = notificationIds && notificationIds.length > 0 ? new Set(notificationIds) : null;
+
+  const updatedNotifications = user.notifications.map((notification) => {
+    if (idSet && !idSet.has(notification.id)) {
+      return notification;
+    }
+    if (!idSet && notification.read) {
+      return notification;
+    }
+    if (notification.read) {
+      return notification;
+    }
+    return {
+      ...notification,
+      read: true,
+    };
+  });
+
+  const updatedUser: UserRecord = {
+    ...user,
+    notifications: updatedNotifications,
+  };
+
+  await saveUser(updatedUser);
+  return updatedNotifications;
 };
 
 export const setFollowingStatus = async (

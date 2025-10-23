@@ -1,4 +1,5 @@
 import { StoredNote } from "@/modules/notes/types";
+import { StoredNotification } from "@/modules/notifications/types";
 
 export type ThemePreference = "system" | "light" | "dark";
 
@@ -10,6 +11,7 @@ export interface UserRecord {
   followers: string[];
   following: string[];
   notes: StoredNote[];
+  notifications: StoredNotification[];
   createdAt: string;
   updatedAt: string;
 }
@@ -26,4 +28,3 @@ export interface UserSettingsPayload {
   displayUsername: boolean;
   themePreference: ThemePreference;
 }
-

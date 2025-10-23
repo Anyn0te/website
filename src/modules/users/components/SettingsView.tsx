@@ -287,7 +287,11 @@ const SettingsView = () => {
         </section>
       </main>
 
-      <BottomNav onOpenCreateModal={handleOpenCreateModal} />
+      <BottomNav
+        onOpenCreateModal={handleOpenCreateModal}
+        viewerId={userId}
+        token={token ?? null}
+      />
       <CreateNoteModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
