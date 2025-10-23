@@ -53,7 +53,7 @@ export default function AboutPage() {
             Our Shared Quote
           </h2>
           <blockquote className="text-xl italic text-[color:var(--color-text-body)]">
-            "Just as a note finds its meaning in being shared, so does our purpose in connecting through anonymity."
+            &ldquo;Just as a note finds its meaning in being shared, so does our purpose in connecting through anonymity.&rdquo;
           </blockquote>
           <p className="mt-4 text-sm font-semibold text-[color:var(--color-text-muted)]">
             - The Anyn0te Team
