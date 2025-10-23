@@ -28,6 +28,7 @@ const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
       },
       { label: "All Notes", href: "/notes", icon: "book", hideOnDesktop: true },
       { label: "My Notes", href: "/minotes", icon: "person", hideOnDesktop: true },
+      { label: "About Us", href: "/about", icon: "info-circle", hideOnDesktop: true}, 
       { label: "Settings", href: "/settings", icon: "gear" },
     ],
     [onOpenCreateModal],
@@ -37,6 +38,7 @@ const BottomNav = ({ onOpenCreateModal }: BottomNavProps) => {
     () => [
       { label: "All Notes", href: "/notes", icon: "book" },
       { label: "My Notes", href: "/minotes", icon: "person" },
+      { label: "About Us", href: "/about", icon: "info-circle" }, 
     ],
     [],
   );
