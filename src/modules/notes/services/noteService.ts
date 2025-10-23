@@ -1,3 +1,5 @@
+import { NoteReactionType, NoteReactions } from "../types";
+
 export interface CreateNotePayload {
   title: string;
   content: string;
@@ -34,4 +36,52 @@ export const createNote = async ({
     const payload = (await response.json()) as { error?: string };
     throw new Error(payload.error ?? "Unable to create note.");
   }
+};
+
+export interface ReactToNotePayload {
+  noteId: string;
+  authorId: string;
+  reaction: NoteReactionType | null;
+  token?: string | null;
+  userId: string;
+}
+
+export interface ReactToNoteResult {
+  reactions: NoteReactions;
+  viewerReaction: NoteReactionType | null;
+}
+
+export const reactToNote = async ({
+  noteId,
+  authorId,
+  reaction,
+  token,
+  userId,
+}: ReactToNotePayload): Promise<ReactToNoteResult> => {
+  const response = await fetch("/api/notes/react", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      noteId,
+      authorId,
+      reaction: reaction ?? "none",
+      userId,
+    }),
+  });
+
+  const payload = (await response.json()) as ReactToNoteResult & {
+    error?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Unable to update reaction.");
+  }
+
+  return {
+    reactions: payload.reactions,
+    viewerReaction: payload.viewerReaction ?? null,
+  };
 };

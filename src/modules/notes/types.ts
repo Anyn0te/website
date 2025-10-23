@@ -1,4 +1,10 @@
 export type NoteMediaType = "image" | "audio";
+export type NoteReactionType = "love" | "dislike";
+
+export interface NoteReactions {
+  love: number;
+  dislike: number;
+}
 
 export interface NoteMedia {
   type: NoteMediaType;
@@ -15,6 +21,8 @@ export interface StoredNote {
   visibility: NoteVisibility;
   createdAt: string;
   updatedAt: string;
+  reactions: NoteReactions;
+  reactionMap: Record<string, NoteReactionType>;
 }
 
 export interface Note {
@@ -28,4 +36,6 @@ export interface Note {
   authorName: string | null;
   isFollowedAuthor: boolean;
   isOwnNote: boolean;
+  reactions: NoteReactions;
+  viewerReaction: NoteReactionType | null;
 }

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
-import { Note } from "../types";
+import { Note, NoteReactionType } from "../types";
 
 const formatDateTime = (value: string) => {
   const parsed = new Date(value);
@@ -22,6 +22,8 @@ interface ExpandedNoteModalProps {
   onClose: () => void;
   onToggleFollow?: (authorId: string, shouldFollow: boolean) => Promise<void>;
   followActionPending?: boolean;
+  onReact?: (reaction: NoteReactionType | null) => Promise<void> | void;
+  reactionActionPending?: boolean;
 }
 
 const ExpandedNoteModal = ({
@@ -29,6 +31,8 @@ const ExpandedNoteModal = ({
   onClose,
   onToggleFollow,
   followActionPending = false,
+  onReact,
+  reactionActionPending = false,
 }: ExpandedNoteModalProps) => {
   const [isFollowBusy, setIsFollowBusy] = useState(false);
 
@@ -71,6 +75,8 @@ const ExpandedNoteModal = ({
     : note.authorName
       ? `Follow ${note.authorName}`
       : "Follow";
+  const isLoved = note.viewerReaction === "love";
+  const isDisliked = note.viewerReaction === "dislike";
 
   const handleFollowClick = async () => {
     if (!canFollowAuthor || !note || !onToggleFollow) {
@@ -85,6 +91,15 @@ const ExpandedNoteModal = ({
     } finally {
       setIsFollowBusy(false);
     }
+  };
+
+  const handleReactionClick = (reaction: NoteReactionType) => {
+    if (!onReact || reactionActionPending) {
+      return;
+    }
+
+    const nextReaction = note.viewerReaction === reaction ? null : reaction;
+    void onReact(nextReaction);
   };
 
   return (
@@ -188,6 +203,42 @@ const ExpandedNoteModal = ({
             className="text-base leading-relaxed"
             dangerouslySetInnerHTML={{ __html: safeContent }}
           />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--color-text-muted)]">
+            Reactions
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                isLoved
+                  ? "border-transparent bg-rose-500 text-white shadow-sm"
+                  : "border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] text-[color:var(--color-text-primary)] hover:border-[color:var(--color-text-accent)] hover:text-[color:var(--color-text-accent)]"
+              } ${reactionActionPending ? "cursor-wait opacity-70" : ""}`}
+              onClick={() => handleReactionClick("love")}
+              disabled={reactionActionPending}
+              aria-label={isLoved ? "Remove love reaction" : "React with love"}
+            >
+              <span>❤️</span>
+              <span>{note.reactions.love}</span>
+            </button>
+            <button
+              type="button"
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                isDisliked
+                  ? "border-transparent bg-slate-700 text-white shadow-sm"
+                  : "border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] text-[color:var(--color-text-primary)] hover:border-[color:var(--color-text-accent)] hover:text-[color:var(--color-text-accent)]"
+              } ${reactionActionPending ? "cursor-wait opacity-70" : ""}`}
+              onClick={() => handleReactionClick("dislike")}
+              disabled={reactionActionPending}
+              aria-label={isDisliked ? "Remove dislike reaction" : "React with dislike"}
+            >
+              <span>👎</span>
+              <span>{note.reactions.dislike}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

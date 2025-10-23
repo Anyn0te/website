@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { Note, NoteMedia, StoredNote } from "@/modules/notes/types";
+import { Note, NoteMedia, NoteReactionType, NoteReactions, StoredNote } from "@/modules/notes/types";
 import {
   ThemePreference,
   UserRecord,
@@ -17,6 +17,47 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "")
     .slice(0, 60);
+
+const isReactionType = (value: unknown): value is NoteReactionType =>
+  value === "love" || value === "dislike";
+
+const normalizeReactionMap = (
+  reactionMap: unknown,
+): Record<string, NoteReactionType> => {
+  if (!reactionMap || typeof reactionMap !== "object") {
+    return {};
+  }
+
+  const normalized: Record<string, NoteReactionType> = {};
+  for (const [userId, reaction] of Object.entries(
+    reactionMap as Record<string, unknown>,
+  )) {
+    if (typeof userId === "string" && isReactionType(reaction)) {
+      normalized[userId] = reaction;
+    }
+  }
+
+  return normalized;
+};
+
+const summarizeReactionMap = (
+  reactionMap: Record<string, NoteReactionType>,
+): NoteReactions => {
+  const summary: NoteReactions = {
+    love: 0,
+    dislike: 0,
+  };
+
+  for (const reaction of Object.values(reactionMap)) {
+    if (reaction === "love") {
+      summary.love += 1;
+    } else if (reaction === "dislike") {
+      summary.dislike += 1;
+    }
+  }
+
+  return summary;
+};
 
 const getFilenameForUser = (user: { userId: string; username: string | null }) => {
   if (user.username) {
@@ -93,20 +134,32 @@ const parseUserFile = (contents: string, userId: string): UserRecord => {
   };
 };
 
-const normalizeStoredNote = (note: StoredNote): StoredNote => ({
-  id: note.id,
-  title: note.title ?? "",
-  content: note.content ?? "",
-  media: Array.isArray(note.media)
-    ? note.media.map<NoteMedia>((mediaItem) => ({
-        type: mediaItem.type,
-        url: mediaItem.url ?? null,
-      }))
-    : [],
-  visibility: note.visibility === "public" ? "public" : "anonymous",
-  createdAt: note.createdAt ?? new Date().toISOString(),
-  updatedAt: note.updatedAt ?? note.createdAt ?? new Date().toISOString(),
-});
+const normalizeStoredNote = (note: StoredNote): StoredNote => {
+  const normalizedReactionMap = normalizeReactionMap(
+    (note as { reactionMap?: Record<string, NoteReactionType>; reactionsByUser?: Record<string, NoteReactionType> }).reactionMap ??
+      (note as { reactionsByUser?: Record<string, NoteReactionType> }).reactionsByUser ??
+      {},
+  );
+
+  const reactions = summarizeReactionMap(normalizedReactionMap);
+
+  return {
+    id: note.id,
+    title: note.title ?? "",
+    content: note.content ?? "",
+    media: Array.isArray(note.media)
+      ? note.media.map<NoteMedia>((mediaItem) => ({
+          type: mediaItem.type,
+          url: mediaItem.url ?? null,
+        }))
+      : [],
+    visibility: note.visibility === "public" ? "public" : "anonymous",
+    createdAt: note.createdAt ?? new Date().toISOString(),
+    updatedAt: note.updatedAt ?? note.createdAt ?? new Date().toISOString(),
+    reactions,
+    reactionMap: normalizedReactionMap,
+  };
+};
 
 export const getOrCreateUser = async (userId: string): Promise<UserRecord> => {
   await ensureUsersDirectory();
@@ -245,6 +298,57 @@ export const appendNoteToUser = async (userId: string, note: StoredNote) => {
   await saveUser(updatedUser);
 };
 
+export const applyReactionToNote = async ({
+  authorId,
+  noteId,
+  reactorId,
+  reaction,
+}: {
+  authorId: string;
+  noteId: string;
+  reactorId: string;
+  reaction: NoteReactionType | null;
+}): Promise<StoredNote> => {
+  const author = await getOrCreateUser(authorId);
+  const noteIndex = author.notes.findIndex((candidate) => candidate.id === noteId);
+
+  if (noteIndex === -1) {
+    throw new Error("Note not found.");
+  }
+
+  const existingNote = author.notes[noteIndex];
+  const reactionMap = {
+    ...existingNote.reactionMap,
+  };
+
+  if (reaction === null) {
+    delete reactionMap[reactorId];
+  } else {
+    reactionMap[reactorId] = reaction;
+  }
+
+  const reactions = summarizeReactionMap(reactionMap);
+
+  const updatedNote: StoredNote = {
+    ...existingNote,
+    reactionMap,
+    reactions,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updatedNotes = [...author.notes];
+  updatedNotes[noteIndex] = updatedNote;
+
+  const updatedAuthor: UserRecord = {
+    ...author,
+    notes: updatedNotes,
+  };
+
+  await saveUser(updatedAuthor);
+
+  return updatedNote;
+};
+
 export const setFollowingStatus = async (
   userId: string,
   targetUserId: string,
@@ -311,6 +415,10 @@ export const getAggregatedNotesForUser = async (
     const authorNotes = sortNotesByDateDesc(user.notes);
 
     for (const note of authorNotes) {
+      const reactions = summarizeReactionMap(note.reactionMap);
+      const viewerReaction =
+        viewer?.userId ? note.reactionMap[viewer.userId] ?? null : null;
+
       aggregated.push({
         id: note.id,
         title: note.title,
@@ -322,13 +430,19 @@ export const getAggregatedNotesForUser = async (
         authorName: note.visibility === "public" ? authorName : null,
         isFollowedAuthor: viewerFollowing.has(user.userId),
         isOwnNote: isViewer,
+        reactions,
+        viewerReaction,
       });
     }
   }
 
-  aggregated.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  aggregated.sort((a, b) => {
+    if (b.reactions.love !== a.reactions.love) {
+      return b.reactions.love - a.reactions.love;
+    }
+
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   return aggregated;
 };

@@ -182,6 +182,11 @@ export async function POST(request: NextRequest) {
       media: storedMedia,
       createdAt: timestamp,
       updatedAt: timestamp,
+      reactions: {
+        love: 0,
+        dislike: 0,
+      },
+      reactionMap: {},
     };
 
     await appendNoteToUser(userId, newNote);

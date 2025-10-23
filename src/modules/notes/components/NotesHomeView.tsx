@@ -8,6 +8,8 @@ import { updateFollowStatus } from "@/modules/users/services/followService";
 import { useAuth } from "@/modules/auth/AuthContext";
 import NoteSection from "./NoteSection";
 import CreateNoteModal from "./CreateNoteModal";
+import { reactToNote } from "../services/noteService";
+import type { Note, NoteReactionType } from "../types";
 
 interface NotesHomeViewProps {
   variant: "dashboard" | "followed" | "all" | "my";
@@ -31,6 +33,10 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isFollowPending, setIsFollowPending] = useState(false);
   const [followError, setFollowError] = useState<string | null>(null);
+  const [reactionError, setReactionError] = useState<string | null>(null);
+  const [pendingReactionKeys, setPendingReactionKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const myNotes = useMemo(() => {
     if (!userId) {
@@ -77,7 +83,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         ? "You haven't created any notes yet. Start by sharing your first note."
         : "No notes yet. Be the first to share a thought.";
 
-  const combinedError = notesError ?? profileError ?? followError;
+  const combinedError = notesError ?? profileError ?? followError ?? reactionError;
   const isLoading = isNotesLoading || (token ? isProfileLoading : false);
 
   const handleFollowStatusChange = useCallback(
@@ -110,6 +116,45 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   );
 
   const followHandler = userId ? handleFollowStatusChange : undefined;
+
+  const handleReactionChange = useCallback(
+    async (note: Note, desiredReaction: NoteReactionType | null) => {
+      if (!userId) {
+        setReactionError("Unable to react because the viewer is not identified yet.");
+        return;
+      }
+
+      const key = `${note.authorId}::${note.id}`;
+      setReactionError(null);
+      setPendingReactionKeys((previous) => {
+        const next = new Set(previous);
+        next.add(key);
+        return next;
+      });
+
+      try {
+        await reactToNote({
+          noteId: note.id,
+          authorId: note.authorId,
+          reaction: desiredReaction,
+          token,
+          userId,
+        });
+        await reload();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to update reaction.";
+        setReactionError(message);
+      } finally {
+        setPendingReactionKeys((previous) => {
+          const next = new Set(previous);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [userId, token, reload],
+  );
 
   const handleOpenCreateModal = () => {
     setIsCreateModalOpen(true);
@@ -156,6 +201,10 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
                 : undefined
             }
             followActionPending={Boolean(followHandler) && isFollowPending}
+            onReactToNote={handleReactionChange}
+            isReactionPending={(note) =>
+              pendingReactionKeys.has(`${note.authorId}::${note.id}`)
+            }
           />
         )}
       </main>

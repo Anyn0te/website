@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Note } from "../types";
+import { Note, NoteReactionType } from "../types";
 import ExpandedNoteModal from "./ExpandedNoteModal";
 import NoteCard from "./NoteCard";
 
@@ -11,6 +11,8 @@ interface NoteSectionProps {
   onFollowStatusChange?: (targetUserId: string, shouldFollow: boolean) => Promise<void>;
   followActionPending?: boolean;
   viewAllPath?: string;
+  onReactToNote?: (note: Note, reaction: NoteReactionType | null) => Promise<void> | void;
+  isReactionPending?: (note: Note) => boolean;
 }
 
 const INITIAL_VISIBLE_NOTES = 5;
@@ -22,10 +24,32 @@ const NoteSection = ({
   onFollowStatusChange,
   followActionPending = false,
   viewAllPath,
+  onReactToNote,
+  isReactionPending,
 }: NoteSectionProps) => {
   const router = useRouter();
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_NOTES);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+
+  useEffect(() => {
+    if (!selectedNote) {
+      return;
+    }
+
+    const updated = notes.find(
+      (candidate) =>
+        candidate.id === selectedNote.id && candidate.authorId === selectedNote.authorId,
+    );
+
+    if (!updated) {
+      setSelectedNote(null);
+      return;
+    }
+
+    if (updated !== selectedNote) {
+      setSelectedNote(updated);
+    }
+  }, [notes, selectedNote]);
 
   const visibleNotes = notes.slice(0, visibleCount);
   const canExpand = notes.length > INITIAL_VISIBLE_NOTES;
@@ -88,22 +112,30 @@ const NoteSection = ({
           )}
         </div>
 
-        {notes.length === 0 ? (
-          <p className="rounded-xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-6 text-center text-sm font-medium text-[color:var(--color-text-muted)]">
-            {emptyMessage ?? "No notes to display yet."}
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 transition-all duration-500 ease-in-out sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {visibleNotes.map((note) => (
-              <NoteCard
-                key={note.id}
-                note={note}
-                onClick={() => setSelectedNote(note)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+            {notes.length === 0 ? (
+              <p className="rounded-xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-6 text-center text-sm font-medium text-[color:var(--color-text-muted)]">
+                {emptyMessage ?? "No notes to display yet."}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 transition-all duration-500 ease-in-out sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {visibleNotes.map((note) => (
+                  <NoteCard
+                    key={note.id}
+                    note={note}
+                    onClick={() => setSelectedNote(note)}
+                    onReact={
+                      onReactToNote
+                        ? (reaction) => {
+                            void onReactToNote(note, reaction);
+                          }
+                        : undefined
+                    }
+                    isReacting={Boolean(isReactionPending?.(note))}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
       <ExpandedNoteModal
         note={selectedNote}
@@ -118,6 +150,16 @@ const NoteSection = ({
           );
         }}
         followActionPending={followActionPending}
+        onReact={
+          onReactToNote && selectedNote
+            ? async (reaction) => {
+                await onReactToNote(selectedNote, reaction);
+              }
+            : undefined
+        }
+        reactionActionPending={
+          selectedNote ? Boolean(isReactionPending?.(selectedNote)) : false
+        }
       />
     </>
   );
