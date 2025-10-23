@@ -36,9 +36,6 @@ export const useNotifications = (
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-
     try {
       const response = await fetch("/api/notifications", {
         method: "GET",
@@ -63,14 +60,31 @@ export const useNotifications = (
           ? fetchError.message
           : "Unable to load notifications.",
       );
-    } finally {
-      setIsLoading(false);
     }
   }, [viewerId, token]);
 
   useEffect(() => {
-    void fetchNotifications();
-  }, [fetchNotifications]);
+    if (!viewerId) {
+      setNotifications([]);
+      return;
+    }
+
+    let isMounted = true;
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+      await fetchNotifications();
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    };
+
+    void load();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [viewerId, fetchNotifications]);
 
   const markAllAsRead = useCallback(async () => {
     if (!viewerId) {

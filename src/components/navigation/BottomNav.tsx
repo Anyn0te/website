@@ -18,6 +18,7 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
   const [isMoreOpen, setIsMoreOpen] = useState(false); 
   const navRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLLIElement>(null); 
+  const mobileControlsRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const {
     notifications,
@@ -56,7 +57,12 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+      if (
+        navRef.current &&
+        !navRef.current.contains(event.target as Node) &&
+        mobileControlsRef.current &&
+        !mobileControlsRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
       if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
@@ -92,16 +98,6 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
 
   return (
     <>
-      <div className={styles.desktopBar}>
-        <NotificationBell
-          notifications={notifications}
-          unreadCount={unreadCount}
-          isLoading={notificationsLoading}
-          onMarkAllAsRead={markAllAsRead}
-          onRefresh={refresh}
-          anchor="desktop"
-        />
-      </div>
       <div className={styles.container} ref={navRef} data-open={isOpen}>
         <nav className={navClassName} aria-label="Primary navigation">
           <ul className={itemsClassName} id="primary-navigation">
@@ -199,9 +195,20 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
             )}
           </li>
         </ul>
-      </nav>
+        </nav>
+        <div className={styles.desktopBell}>
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadCount}
+              isLoading={notificationsLoading}
+              onMarkAllAsRead={markAllAsRead}
+              onRefresh={refresh}
+              anchor="desktop"
+            />
+        </div>
       </div>
-      <div className={styles.mobileControls}>
+
+      <div className={styles.mobileControls} data-open={isOpen} ref={mobileControlsRef}>
         <NotificationBell
           notifications={notifications}
           unreadCount={unreadCount}

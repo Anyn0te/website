@@ -132,14 +132,20 @@
 }
 
 .panelDesktop {
-  right: 0;
+  right: 158px;
   min-width: 360px;
+  bottom: calc(100% + 12px);
+  top: auto;
 }
 
 .anchorMobile .trigger {
+  width: 60px;
+  height: 60px;
   background: var(--color-mobile-toggle-bg);
   color: var(--color-on-accent);
   box-shadow: 0 12px 22px var(--color-nav-shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease,
+    color 0.3s ease;
 }
 
 .anchorMobile .trigger:hover {
@@ -147,8 +153,17 @@
   color: var(--color-on-accent);
 }
 
+.mobileControls[data-open="true"] .anchorMobile .trigger {
+    transform: rotate(-45deg);
+    background: var(--color-accent-hover);
+    box-shadow: 0 16px 28px var(--color-nav-shadow);
+}
+
+
 @media (max-width: 768px) {
   .panel {
     width: min(360px, calc(100vw - 32px));
+    bottom: calc(100% + 12px);
+    top: auto;
   }
 }

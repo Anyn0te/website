@@ -5,9 +5,11 @@
   bottom: 32px;
   display: flex;
   justify-content: center;
+  align-items: center;
   pointer-events: none;
   padding: 0 24px;
   z-index: 40;
+  gap: 16px;
 }
 
 .nav {
@@ -28,19 +30,15 @@
   transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 
-.desktopBar {
-  position: fixed;
-  top: 24px;
-  right: 32px;
-  z-index: 55;
+.desktopBell {
   display: none;
   pointer-events: auto;
-  padding: 8px 16px;
-  border-radius: 999px;
   background: var(--color-nav-bg);
   border: 1px solid var(--color-nav-border);
+  border-radius: 999px;
   box-shadow: 0 12px 24px var(--color-nav-shadow);
-  align-items: center;
+  padding: 0 12px;
+  height: 72px;
 }
 
 .mobileControls {
@@ -149,6 +147,11 @@
     color 0.3s ease;
 }
 
+.menuToggle span {
+  line-height: 1;
+  display: block;
+}
+
 .menuToggle:focus-visible {
   outline: 3px solid rgba(79, 70, 229, 0.45);
   outline-offset: 2px;
@@ -216,11 +219,14 @@
 
   .mobileControls {
     display: flex;
+    flex-direction: column;
+    align-items: center;
     position: fixed;
-    bottom: 112px;
+    bottom: 20px;
     right: 20px;
     gap: 10px;
-    z-index: 52;
+    z-index: 100;
+    pointer-events: auto;
   }
 
   .navItemDesktopMore {
@@ -310,9 +316,6 @@
 
   .menuToggle {
     display: inline-flex;
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
     width: 60px;
     height: 60px;
     justify-content: center;
@@ -328,9 +331,7 @@
     pointer-events: auto;
   }
 
-  .container[data-open="true"] .menuToggle {
-    width: 60px;
-    height: 60px;
+  .mobileControls[data-open="true"] .menuToggle {
     transform: rotate(45deg);
     background: var(--color-accent-hover);
     box-shadow: 0 16px 28px var(--color-nav-shadow);
@@ -338,8 +339,10 @@
 }
 
 @media (min-width: 769px) {
-  .desktopBar {
+  .desktopBell {
     display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
