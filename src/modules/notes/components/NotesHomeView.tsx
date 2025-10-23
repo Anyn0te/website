@@ -33,11 +33,14 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   const [followError, setFollowError] = useState<string | null>(null);
 
   const myNotes = useMemo(() => {
-    if (token) {
-        return notes.filter((note) => note.isOwnNote);
+    if (!userId) {
+      return [];
     }
-    return [];
-  }, [notes, token]);
+
+    return notes.filter(
+      (note) => note.isOwnNote || note.authorId === userId,
+    );
+  }, [notes, userId]);
 
   const filteredNotes = useMemo(() => {
     if (variant === "followed") {
@@ -70,7 +73,9 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   const emptyMessage =
     variant === "followed"
       ? "Follow creators to see their notes here."
-      : "No notes yet. Be the first to share a thought.";
+      : variant === "my"
+        ? "You haven't created any notes yet. Start by sharing your first note."
+        : "No notes yet. Be the first to share a thought.";
 
   const combinedError = notesError ?? profileError ?? followError;
   const isLoading = isNotesLoading || (token ? isProfileLoading : false);
@@ -139,15 +144,6 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
           </section>
         )}
 
-        {!isLoading && !combinedError && variant === "dashboard" && token && (
-            <NoteSection
-                title="My Notes"
-                notes={myNotes}
-                emptyMessage="It's good to talk you know? it may calm you a little."
-                viewAllPath="/minotes" 
-            />
-        )}
-        
         {!isLoading && !combinedError && (
           <NoteSection
             title={sectionTitle}
