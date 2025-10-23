@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@import url("https://fonts.googleapis.com/css2?family=Shadows+Into+Light&display=swap");
-
 :root {
   color-scheme: light;
   --color-app-bg: #eeeeee;
@@ -74,7 +72,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  font-family: "Shadows Into Light", cursive;
+  font-family: var(--font-excalifont), "Excalifont", cursive;
   background: var(--color-app-bg);
   color: var(--color-text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;

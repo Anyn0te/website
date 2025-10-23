@@ -1,3 +1,4 @@
+import defaultTheme from 'tailwindcss/defaultTheme';
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
@@ -9,7 +10,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      // You can define custom colors here, if needed
+      fontFamily: {
+        sans: ['var(--font-excalifont)', ...defaultTheme.fontFamily.sans],
+      },
     },
   },
   plugins: [],
