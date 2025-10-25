@@ -16,7 +16,6 @@ import {
   UserRecord,
   UserSettingsPayload,
 } from "../types";
-import { sendPushNotificationForUser } from "@/modules/notifications/server/pushService";
 
 const STORAGE_ROOT = path.join(process.cwd(), "storage");
 const USERS_DIRECTORY = path.join(STORAGE_ROOT, "users");
@@ -477,10 +476,6 @@ export const appendNoteToUser = async (userId: string, note: StoredNote) => {
   };
 
   await saveUser(updatedUser);
-
-  void sendPushNotificationForUser(userId, payload).catch((error) => {
-    console.error("Push notification delivery failed:", error);
-  });
 };
 
 export const applyReactionToNote = async ({
