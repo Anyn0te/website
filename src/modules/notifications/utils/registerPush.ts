@@ -1,6 +1,44 @@
 import { urlBase64ToUint8Array } from "./urlBase64";
 
-const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+interface PushPublicConfig {
+  enabled: boolean;
+  publicKey: string | null;
+}
+
+let cachedConfig: PushPublicConfig | null = null;
+let configPromise: Promise<PushPublicConfig> | null = null;
+
+const fetchPushConfig = async (): Promise<PushPublicConfig> => {
+  if (cachedConfig) {
+    return cachedConfig;
+  }
+
+  if (!configPromise) {
+    configPromise = fetch("/api/push/config", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Invalid push configuration response.");
+        }
+        return (await response.json()) as PushPublicConfig;
+      })
+      .then((config) => {
+        cachedConfig = config;
+        return config;
+      })
+      .catch((error) => {
+        configPromise = null;
+        throw error;
+      });
+  }
+
+  return configPromise;
+};
 
 const registerServiceWorker = async () => {
   if (!("serviceWorker" in navigator)) {
@@ -23,6 +61,18 @@ export const ensurePushSubscription = async (authToken?: string | null) => {
     return false;
   }
 
+  let config: PushPublicConfig;
+  try {
+    config = await fetchPushConfig();
+  } catch (configError) {
+    console.error("Unable to resolve push notification configuration:", configError);
+    return false;
+  }
+
+  if (!config.enabled || !config.publicKey) {
+    return false;
+  }
+
   if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
     return false;
   }
@@ -40,15 +90,10 @@ export const ensurePushSubscription = async (authToken?: string | null) => {
   let subscription = await registration.pushManager.getSubscription();
 
   if (!subscription) {
-    if (!PUBLIC_KEY) {
-      console.warn("Push notifications require NEXT_PUBLIC_VAPID_PUBLIC_KEY to be set.");
-      return false;
-    }
-
     try {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY),
+        applicationServerKey: urlBase64ToUint8Array(config.publicKey),
       });
     } catch (subscriptionError) {
       console.error("Unable to subscribe to push notifications:", subscriptionError);

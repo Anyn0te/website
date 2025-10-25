@@ -1,14 +1,11 @@
 import webpush from "web-push";
 import { StoredNotification } from "@/modules/notifications/types";
+import { getPushServerConfig } from "@/modules/notifications/server/config";
 import {
   getPushSubscriptionsForUser,
   removePushSubscriptionForUser,
 } from "@/modules/users/server/userRepository";
 import { PushSubscriptionRecord } from "@/modules/users/types";
-
-const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
-const PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? "";
-const CONTACT = process.env.PUSH_CONTACT_EMAIL ?? "mailto:no-reply@anynote.app";
 
 let configured = false;
 
@@ -17,18 +14,17 @@ const ensureConfigured = () => {
     return true;
   }
 
-  if (!PUBLIC_KEY || !PRIVATE_KEY) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(
-        "[push] VAPID keys are not configured. Define NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY to enable device notifications.",
-      );
-    }
+  const { enabled, publicKey, privateKey, contactEmail } = getPushServerConfig();
+
+  if (!enabled || !publicKey || !privateKey) {
+    console.warn(
+      "[push] VAPID keys are not configured. Set NEXT_PUBLIC_VAPID_PUBLIC_KEY (or VAPID_PUBLIC_KEY) and VAPID_PRIVATE_KEY to enable device notifications.",
+    );
     return false;
   }
 
   try {
-    const contactDetail = CONTACT.startsWith("mailto:") ? CONTACT : `mailto:${CONTACT}`;
-    webpush.setVapidDetails(contactDetail, PUBLIC_KEY, PRIVATE_KEY);
+    webpush.setVapidDetails(contactEmail, publicKey, privateKey);
     configured = true;
     return true;
   } catch (error) {

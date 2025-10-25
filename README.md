@@ -34,3 +34,18 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Push Notifications
+
+Browser/device notifications depend on Web Push and require VAPID credentials.
+
+1. Generate keys by running `node scripts/generate-vapid.js`.
+2. Add the keys to your environment (for local development use `.env.local`):
+   ```
+   NEXT_PUBLIC_VAPID_PUBLIC_KEY=PASTE_PUBLIC_KEY_HERE
+   VAPID_PRIVATE_KEY=PASTE_PRIVATE_KEY_HERE
+   ```
+   (If you prefer, you can use `VAPID_PUBLIC_KEY` in place of `NEXT_PUBLIC_VAPID_PUBLIC_KEY`; the server will expose the correct public key to the client.)
+3. Restart the dev server so the new values are picked up.
+
+Once configured, approving the in-app permission prompt will register the device and push notifications will be delivered through `/push-sw.js`.
