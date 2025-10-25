@@ -4,6 +4,7 @@ import {
   Note,
   NoteComment,
   NoteMedia,
+  NoteMediaType,
   NoteReactionType,
   NoteReactions,
   StoredNote,
@@ -241,6 +242,139 @@ const parseUserFile = (contents: string, userId: string): UserRecord => {
   };
 };
 
+const normalizeMediaUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  let normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(normalized) || normalized.startsWith("data:")) {
+    return normalized;
+  }
+
+  if (normalized.startsWith("/media/")) {
+    return normalized;
+  }
+
+  if (normalized.startsWith("media/")) {
+    return `/${normalized}`;
+  }
+
+  if (normalized.startsWith("/public/media/")) {
+    return normalized.replace("/public", "");
+  }
+
+  if (normalized.startsWith("./")) {
+    normalized = normalized.replace(/^\.+/, "");
+  }
+
+  if (!normalized.startsWith("/")) {
+    normalized = `/${normalized}`;
+  }
+
+  return normalized;
+};
+
+const inferMediaTypeFromUrl = (url: string): NoteMediaType | null => {
+  const lower = url.toLowerCase();
+
+  if (/\.(jpe?g|png)$/i.test(lower)) {
+    return "image";
+  }
+
+  if (/\.(mp3|wav|ogg|mpeg|mpga)$/i.test(lower)) {
+    return "audio";
+  }
+
+  return null;
+};
+
+const normalizeMediaEntry = (candidate: unknown): NoteMedia | null => {
+  if (!candidate) {
+    return null;
+  }
+
+  if (typeof candidate === "string") {
+    const url = normalizeMediaUrl(candidate);
+    const type = url ? inferMediaTypeFromUrl(url) : null;
+    if (!url || !type) {
+      return null;
+    }
+    return { type, url };
+  }
+
+  if (typeof candidate !== "object") {
+    return null;
+  }
+
+  const record = candidate as Record<string, unknown>;
+  const rawType = typeof record.type === "string" ? record.type.toLowerCase() : null;
+  const explicitType: NoteMediaType | null =
+    rawType === "image" || rawType === "audio" ? (rawType as NoteMediaType) : null;
+
+  const possibleUrlKeys = ["url", "mediaUrl", "path", "src", "href"];
+  let url: string | null = null;
+  for (const key of possibleUrlKeys) {
+    const value = record[key];
+    const normalized = normalizeMediaUrl(value);
+    if (normalized) {
+      url = normalized;
+      break;
+    }
+  }
+
+  if (!url && typeof record.file === "string") {
+    url = normalizeMediaUrl(record.file);
+  }
+
+  if (!url && typeof record.filename === "string") {
+    url = normalizeMediaUrl(record.filename);
+  }
+
+  if (!url) {
+    return null;
+  }
+
+  const type = explicitType ?? inferMediaTypeFromUrl(url);
+  if (!type) {
+    return null;
+  }
+
+  return { type, url };
+};
+
+const normalizeMediaCollection = (media: unknown): NoteMedia[] => {
+  const items: unknown[] = Array.isArray(media)
+    ? media
+    : media && typeof media === "object"
+      ? [media]
+      : [];
+
+  const result: NoteMedia[] = [];
+  const seen = new Set<string>();
+
+  for (const item of items) {
+    const normalized = normalizeMediaEntry(item);
+    if (!normalized || !normalized.url) {
+      continue;
+    }
+
+    const key = `${normalized.type}:${normalized.url}`;
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(normalized);
+  }
+
+  return result;
+};
+
 const normalizeStoredNote = (note: StoredNote, ownerId: string): StoredNote => {
   const normalizedReactionMap = normalizeReactionMap(
     (note as { reactionMap?: Record<string, NoteReactionType>; reactionsByUser?: Record<string, NoteReactionType> }).reactionMap ??
@@ -262,16 +396,13 @@ const normalizeStoredNote = (note: StoredNote, ownerId: string): StoredNote => {
       ? Boolean((note as { commentsLocked?: boolean }).commentsLocked)
       : false;
 
+  const media = normalizeMediaCollection((note as { media?: unknown }).media);
+
   return {
     id: note.id,
     title: note.title ?? "",
     content: note.content ?? "",
-    media: Array.isArray(note.media)
-      ? note.media.map<NoteMedia>((mediaItem) => ({
-          type: mediaItem.type,
-          url: mediaItem.url ?? null,
-        }))
-      : [],
+    media,
     visibility: note.visibility === "public" ? "public" : "anonymous",
     createdAt: note.createdAt ?? new Date().toISOString(),
     updatedAt: note.updatedAt ?? note.createdAt ?? new Date().toISOString(),
