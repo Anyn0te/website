@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./NotificationBell.module.css";
 import { Notification as AppNotification } from "@/modules/notifications/types";
+import {
+  ensurePushSubscription,
+  removePushSubscription,
+} from "@/modules/notifications/utils/registerPush";
 
 type AnchorVariant = "mobile" | "desktop";
 
@@ -20,26 +24,27 @@ interface NotificationBellProps {
   nativeReady?: boolean;
   nativePermission?: NotificationPermission;
   onRequestNativePermission?: () => Promise<void>;
+  authToken?: string | null;
 }
 
 const formatMessage = (notification: AppNotification): string => {
   const actor = notification.actorName ?? "Someone";
 
   if (notification.type === "reaction") {
-    const reactionLabel =
+    const feelingLabel =
       notification.reaction === "love"
-        ? "loved"
+        ? "shared a warm feeling about"
         : notification.reaction === "dislike"
-          ? "disliked"
-          : "reacted to";
-    return `${actor} ${reactionLabel} "${notification.noteTitle}"`;
+          ? "shared a concerned feeling about"
+          : "shared a feeling about";
+    return `${actor} ${feelingLabel} "${notification.noteTitle}"`;
   }
 
   if (notification.isPrivate) {
     return `${actor} sent a private thought on "${notification.noteTitle}"`;
   }
 
-  return `${actor} commented on "${notification.noteTitle}"`;
+  return `${actor} shared a thought on "${notification.noteTitle}"`;
 };
 
 const formatTimestamp = (isoString: string): string => {
@@ -65,10 +70,12 @@ export const NotificationBell = ({
   nativePermission = "default",
   onRequestNativePermission,
   anchor = "desktop",
+  authToken = null,
 }: NotificationBellProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [renderPanel, setRenderPanel] = useState(false);
   const [panelState, setPanelState] = useState<"closed" | "opening" | "open" | "closing">("closed");
+  const [hasPushSubscription, setHasPushSubscription] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const toggleOpen = useCallback(() => {
     setIsOpen((previous) => {
@@ -119,6 +126,37 @@ export const NotificationBell = ({
   }, [isOpen, renderPanel]);
 
   useEffect(() => {
+    if (!nativeSupport || !nativeReady) {
+      return;
+    }
+
+    if (nativePermission === "granted") {
+      if (hasPushSubscription) {
+        return;
+      }
+      void ensurePushSubscription(authToken)
+        .then((success) => {
+          if (success) {
+            setHasPushSubscription(true);
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to register push subscription:", error);
+        });
+      return;
+    }
+
+    if (nativePermission === "denied") {
+      setHasPushSubscription(false);
+      void removePushSubscription(authToken).catch((error) => {
+        console.error("Failed to remove push subscription:", error);
+      });
+    } else {
+      setHasPushSubscription(false);
+    }
+  }, [authToken, nativePermission, nativeReady, nativeSupport, hasPushSubscription]);
+
+  useEffect(() => {
     if (!isOpen) {
       return;
     }
@@ -155,7 +193,6 @@ export const NotificationBell = ({
     "animate-scale-in",
   );
   const canShowNativeBanner = nativeSupport && nativeReady;
-
   return (
     <div className={containerClassName} ref={containerRef}>
       <button

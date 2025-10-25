@@ -3,6 +3,15 @@ import { StoredNotification } from "@/modules/notifications/types";
 
 export type ThemePreference = "system" | "light" | "dark";
 
+export interface PushSubscriptionRecord {
+  endpoint: string;
+  expirationTime: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
 export interface UserRecord {
   userId: string;
   username: string | null;
@@ -12,6 +21,7 @@ export interface UserRecord {
   following: string[];
   notes: StoredNote[];
   notifications: StoredNotification[];
+  pushSubscriptions: PushSubscriptionRecord[];
   createdAt: string;
   updatedAt: string;
 }

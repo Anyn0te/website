@@ -11,10 +11,12 @@ import {
 } from "@/modules/notes/types";
 import { StoredNotification } from "@/modules/notifications/types";
 import {
+  PushSubscriptionRecord,
   ThemePreference,
   UserRecord,
   UserSettingsPayload,
 } from "../types";
+import { sendPushNotificationForUser } from "@/modules/notifications/server/pushService";
 
 const STORAGE_ROOT = path.join(process.cwd(), "storage");
 const USERS_DIRECTORY = path.join(STORAGE_ROOT, "users");
@@ -177,6 +179,7 @@ const createDefaultUser = (userId: string): UserRecord => {
     following: [],
     notes: [],
     notifications: [],
+    pushSubscriptions: [],
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -227,6 +230,13 @@ const parseUserFile = (contents: string, userId: string): UserRecord => {
           .map((notification) => normalizeStoredNotification(notification))
           .slice(0, MAX_NOTIFICATIONS)
       : fallback.notifications,
+    pushSubscriptions: Array.isArray(
+      (parsed as { pushSubscriptions?: unknown[] }).pushSubscriptions,
+    )
+      ? ((parsed as { pushSubscriptions: unknown[] }).pushSubscriptions)
+          .map((subscription) => normalizePushSubscription(subscription))
+          .filter((subscription): subscription is PushSubscriptionRecord => subscription !== null)
+      : fallback.pushSubscriptions,
     createdAt: parsed.createdAt ?? fallback.createdAt,
     updatedAt: parsed.updatedAt ?? fallback.updatedAt,
   };
@@ -273,6 +283,60 @@ const normalizeStoredNote = (note: StoredNote, ownerId: string): StoredNote => {
   };
 };
 
+const normalizePushSubscription = (subscription: unknown): PushSubscriptionRecord | null => {
+  if (!subscription || typeof subscription !== "object") {
+    return null;
+  }
+
+  const { endpoint, expirationTime, keys } = subscription as {
+    endpoint?: unknown;
+    expirationTime?: unknown;
+    keys?: unknown;
+  };
+
+  if (typeof endpoint !== "string" || !endpoint) {
+    return null;
+  }
+
+  if (!keys || typeof keys !== "object") {
+    return null;
+  }
+
+  const { p256dh, auth } = keys as { p256dh?: unknown; auth?: unknown };
+
+  if (typeof p256dh !== "string" || typeof auth !== "string") {
+    return null;
+  }
+
+  return {
+    endpoint,
+    expirationTime:
+      typeof expirationTime === "number"
+        ? expirationTime
+        : expirationTime === null
+          ? null
+          : null,
+    keys: {
+      p256dh,
+      auth,
+    },
+  };
+};
+
+const dedupePushSubscriptions = (
+  subscriptions: PushSubscriptionRecord[],
+): PushSubscriptionRecord[] => {
+  const map = new Map<string, PushSubscriptionRecord>();
+  for (const subscription of subscriptions) {
+    const normalized = normalizePushSubscription(subscription);
+    if (!normalized) {
+      continue;
+    }
+    map.set(normalized.endpoint, normalized);
+  }
+  return Array.from(map.values());
+};
+
 export const getOrCreateUser = async (userId: string): Promise<UserRecord> => {
   await ensureUsersDirectory();
 
@@ -298,6 +362,7 @@ export const saveUser = async (user: UserRecord): Promise<void> => {
     notifications: user.notifications
       .map((notification) => normalizeStoredNotification(notification))
       .slice(0, MAX_NOTIFICATIONS),
+    pushSubscriptions: dedupePushSubscriptions(user.pushSubscriptions ?? []),
     updatedAt: new Date().toISOString(),
   };
 
@@ -412,6 +477,10 @@ export const appendNoteToUser = async (userId: string, note: StoredNote) => {
   };
 
   await saveUser(updatedUser);
+
+  void sendPushNotificationForUser(userId, payload).catch((error) => {
+    console.error("Push notification delivery failed:", error);
+  });
 };
 
 export const applyReactionToNote = async ({
@@ -800,6 +869,62 @@ const addNotificationToUser = async (
   const updatedUser: UserRecord = {
     ...user,
     notifications: [payload, ...existingWithoutDuplicate].slice(0, MAX_NOTIFICATIONS),
+  };
+
+  await saveUser(updatedUser);
+
+  void import("@/modules/notifications/server/pushService")
+    .then(({ sendPushNotificationForUser }) =>
+      sendPushNotificationForUser(userId, payload).catch((error) => {
+        console.error("Push notification delivery failed:", error);
+      }),
+    )
+    .catch((error) => {
+      console.error("Push notification module load failed:", error);
+    });
+};
+
+export const getPushSubscriptionsForUser = async (
+  userId: string,
+): Promise<PushSubscriptionRecord[]> => {
+  const user = await getOrCreateUser(userId);
+  return dedupePushSubscriptions(user.pushSubscriptions ?? []);
+};
+
+export const addPushSubscriptionForUser = async (
+  userId: string,
+  subscription: PushSubscriptionRecord,
+): Promise<void> => {
+  const user = await getOrCreateUser(userId);
+  const normalized = normalizePushSubscription(subscription);
+  if (!normalized) {
+    throw new Error("Invalid push subscription payload.");
+  }
+
+  const existing = dedupePushSubscriptions([...user.pushSubscriptions, normalized]);
+
+  const updatedUser: UserRecord = {
+    ...user,
+    pushSubscriptions: existing,
+  };
+
+  await saveUser(updatedUser);
+};
+
+export const removePushSubscriptionForUser = async (
+  userId: string,
+  endpoint: string,
+): Promise<void> => {
+  const user = await getOrCreateUser(userId);
+
+  const filtered = user.pushSubscriptions.filter((subscription) => subscription.endpoint !== endpoint);
+  if (filtered.length === user.pushSubscriptions.length) {
+    return;
+  }
+
+  const updatedUser: UserRecord = {
+    ...user,
+    pushSubscriptions: filtered,
   };
 
   await saveUser(updatedUser);

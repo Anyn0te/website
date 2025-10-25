@@ -18,20 +18,20 @@ const describeNotification = (notification: AppNotification): string => {
   const actor = notification.actorName ?? "Someone";
 
   if (notification.type === "reaction") {
-    const reactionLabel =
+    const feelingLabel =
       notification.reaction === "love"
-        ? "loved"
+        ? "shared a warm feeling about"
         : notification.reaction === "dislike"
-          ? "disliked"
-          : "reacted to";
-    return `${actor} ${reactionLabel} "${notification.noteTitle}"`;
+          ? "shared a concerned feeling about"
+          : "shared a feeling about";
+    return `${actor} ${feelingLabel} "${notification.noteTitle}"`;
   }
 
   if (notification.isPrivate) {
     return `${actor} sent a private thought on "${notification.noteTitle}"`;
   }
 
-  return `${actor} commented on "${notification.noteTitle}"`;
+  return `${actor} shared a thought on "${notification.noteTitle}"`;
 };
 
 const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomNavProps) => {
@@ -381,6 +381,7 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
               nativeReady={permissionReady}
               nativePermission={nativePermission}
               onRequestNativePermission={handleRequestNativePermission}
+              authToken={token ?? null}
               anchor="desktop"
             />
         </div>
@@ -402,6 +403,7 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
           nativeReady={permissionReady}
           nativePermission={nativePermission}
           onRequestNativePermission={handleRequestNativePermission}
+          authToken={token ?? null}
           anchor="mobile"
         />
         <button
