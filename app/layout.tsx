@@ -3,6 +3,34 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/modules/auth/AuthContext";
 
+const themeInitializer = `(() => {
+  try {
+    const storageKey = "anynote:guest-theme-preference";
+    const cookieMatch = document.cookie.match(/anynote_theme_pref=([^;]+)/);
+    let preference = cookieMatch ? decodeURIComponent(cookieMatch[1]) : null;
+
+    if (!preference || preference === "") {
+      try {
+        const stored = window.localStorage.getItem(storageKey);
+        if (stored) {
+          preference = stored;
+        }
+      } catch (storageError) {
+        // ignore
+      }
+    }
+
+    if (!preference || preference === "system") {
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      preference = prefersDark ? "dark" : "light";
+    }
+
+    document.documentElement.setAttribute("data-theme", preference);
+  } catch (error) {
+    // no-op
+  }
+})();`;
+
 const excalifont = localFont({
   src: [
     {
@@ -29,6 +57,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+        <script
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: themeInitializer }}
+        />
       </head>
       <body
         className={`${excalifont.variable} ${excalifont.className} antialiased`}

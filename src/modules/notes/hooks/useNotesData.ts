@@ -54,7 +54,9 @@ export const useNotesData = (
     mutate,
   } = useSWR<Note[]>(swrKey, fetchNotes, {
     keepPreviousData: true,
-    revalidateOnFocus: true,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 5000,
   });
 
   const reload = useCallback(async () => {

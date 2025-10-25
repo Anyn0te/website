@@ -81,7 +81,9 @@ export const useNotifications = (
     {
       refreshInterval: pollIntervalMs,
       keepPreviousData: true,
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: pollIntervalMs,
     },
   );
 

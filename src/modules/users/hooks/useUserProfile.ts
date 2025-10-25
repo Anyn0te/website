@@ -56,6 +56,12 @@ const applyThemePreference = (preference: ThemePreference) => {
 
   const resolved = resolveTheme(preference);
   document.documentElement.setAttribute("data-theme", resolved);
+  try {
+    const cookieValue = encodeURIComponent(preference);
+    document.cookie = `anynote_theme_pref=${cookieValue}; path=/; max-age=31536000; SameSite=Lax`;
+  } catch {
+    // ignore cookie failures
+  }
 };
 
 const normalizeTheme = (value: unknown): ThemePreference => {
