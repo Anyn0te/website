@@ -11,6 +11,7 @@ interface NoteCardProps {
   isReacting?: boolean;
   className?: string;
   size?: NoteCardSize;
+  animationDelayMs?: number;
 }
 
 const sizeStyles = {
@@ -38,6 +39,7 @@ const NoteCard = ({
   isReacting = false,
   className = "",
   size = "medium",
+  animationDelayMs,
 }: NoteCardProps) => {
   const safeTitle = sanitizeHtml(note.title);
   const safeContent = sanitizeHtml(note.content);
@@ -65,7 +67,12 @@ const NoteCard = ({
   return (
     <div
       onClick={onClick}
-      className={`group flex h-full w-full cursor-pointer flex-col justify-start rounded-3xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] shadow-[0_8px_20px_var(--color-glow)] transition-transform transition-shadow duration-200 hover:-translate-y-1 hover:bg-[color:var(--color-card-hover-bg)] hover:shadow-[0_12px_28px_var(--color-glow)] ${sizeTokens.wrapper} ${className}`}
+      className={`group flex h-full w-full cursor-pointer flex-col justify-start rounded-3xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] shadow-[0_8px_20px_var(--color-glow)] transition-transform transition-shadow duration-200 hover:-translate-y-1 hover:bg-[color:var(--color-card-hover-bg)] hover:shadow-[0_12px_28px_var(--color-glow)] ${sizeTokens.wrapper} animate-fade-up ${className}`}
+      style={
+        animationDelayMs !== undefined
+          ? { animationDelay: `${animationDelayMs}ms` }
+          : undefined
+      }
     >
       <div className="flex items-center justify-between text-[color:var(--color-text-muted)]">
         <span className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-text-accent)]">

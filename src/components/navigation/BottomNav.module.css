@@ -10,10 +10,15 @@
   padding: 0 24px;
   z-index: 40;
   gap: 16px;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s var(--ease-in-out-soft), transform 0.3s var(--ease-in-out-soft);
 }
 
 .container[data-modal-open="true"] {
-  display: none;
+  opacity: 0;
+  transform: translateY(24px);
+  pointer-events: none;
 }
 
 .nav {
@@ -52,6 +57,15 @@
   align-items: center;
   gap: 12px;
   pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s var(--ease-in-out-soft), transform 0.3s var(--ease-in-out-soft);
+}
+
+.mobileControls[data-modal-open="true"] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
 }
 
 .nav:hover {
@@ -203,9 +217,28 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 50;
+    transition: opacity 0.18s var(--ease-in-out-soft), transform 0.18s var(--ease-in-out-soft);
+}
+
+.moreDropdown[data-state="open"] {
     opacity: 1;
     pointer-events: auto;
-    z-index: 50;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+.moreDropdown[data-state="opening"] {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-10px);
+}
+
+.moreDropdown[data-state="closing"] {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-12px);
 }
 
 .moreDropdownItem .navLink {
@@ -253,6 +286,15 @@
     gap: 10px;
     z-index: 100;
     pointer-events: auto;
+    transform: translateY(0);
+    opacity: 1;
+    transition: opacity 0.25s var(--ease-in-out-soft), transform 0.25s var(--ease-in-out-soft);
+  }
+
+  .mobileControls[data-modal-open="true"] {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(16px);
   }
 
   .mobileControls[data-modal-open="true"] {

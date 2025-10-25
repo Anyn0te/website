@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createNote } from "../services/noteService";
 
@@ -51,35 +51,69 @@ const CreateNoteModal = ({
       ? `Post as ${username}`
       : "Post Anonymously";
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setTitle("");
     setContent("");
     setMediaFiles([]);
     setError(null);
     setIsSubmitting(false);
-  };
+  }, []);
+
+  const EXIT_DURATION = 220;
+  const [renderModal, setRenderModal] = useState(isOpen);
+  const [transitionState, setTransitionState] = useState<"closed" | "opening" | "open" | "closing">(
+    isOpen ? "open" : "closed",
+  );
 
   useEffect(() => {
+    if (isOpen) {
+      setRenderModal(true);
+      setTransitionState("opening");
+      const raf = window.requestAnimationFrame(() => {
+        setTransitionState("open");
+      });
+      return () => {
+        window.cancelAnimationFrame(raf);
+      };
+    }
+
+    if (renderModal) {
+      setTransitionState("closing");
+      const timeout = window.setTimeout(() => {
+        setRenderModal(false);
+        setTransitionState("closed");
+      }, EXIT_DURATION);
+      return () => {
+        window.clearTimeout(timeout);
+      };
+    }
+
+    setTransitionState("closed");
+    return;
+  }, [isOpen, renderModal]);
+
+  useEffect(() => {
+    if (transitionState !== "open" && transitionState !== "opening") {
+      return;
+    }
+
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        resetForm();
         onClose();
       }
     };
 
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      document.body.classList.add("modal-open");
-    } else {
-      document.body.classList.remove("modal-open");
-    }
+    document.addEventListener("keydown", handleEscape);
+    document.body.classList.add("modal-open");
 
     return () => {
       document.removeEventListener("keydown", handleEscape);
       document.body.classList.remove("modal-open");
     };
-  }, [isOpen, onClose]);
+  }, [transitionState, onClose, resetForm]);
 
-  if (!isOpen) {
+  if (!renderModal) {
     return null;
   }
 
@@ -160,9 +194,13 @@ const CreateNoteModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="modal-layer fixed inset-0 z-50 flex items-center justify-center p-4"
+      data-state={transitionState}
+    >
       <div
-        className="absolute inset-0 h-full w-full bg-black/60"
+        className="modal-backdrop absolute inset-0 h-full w-full bg-black/60"
+        data-state={transitionState}
         onClick={() => {
           resetForm();
           onClose();
@@ -170,7 +208,8 @@ const CreateNoteModal = ({
       />
 
       <div
-        className="relative z-50 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)] p-6 shadow-[0_16px_32px_var(--color-glow)] transition-colors"
+        className="modal-surface relative z-50 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)] p-6 shadow-[0_16px_32px_var(--color-glow)] transition-colors"
+        data-state={transitionState}
         onClick={(event) => event.stopPropagation()}
       >
         <button

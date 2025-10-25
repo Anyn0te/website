@@ -38,7 +38,7 @@ export default function AboutPage() {
   
   return (
     <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-[220px] md:pb-32 transition-colors">
-      <header className="mx-auto mb-8 max-w-5xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center shadow-[0_12px_24px_var(--color-glow)]">
+      <header className="mx-auto mb-8 max-w-5xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center shadow-[0_12px_24px_var(--color-glow)] animate-fade-up">
         <h1 className="text-3xl font-bold tracking-wide text-[color:var(--color-text-primary)]">
           Anyn0te
         </h1>
@@ -48,7 +48,7 @@ export default function AboutPage() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-8">
-        <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-8 text-center shadow-[0_8px_20px_var(--color-glow)]">
+        <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-8 text-center shadow-[0_8px_20px_var(--color-glow)] animate-fade-up">
           <h2 className="text-2xl font-bold uppercase text-[color:var(--color-text-accent)] mb-4">
             Our Shared Quote
           </h2>
@@ -60,18 +60,19 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <section>
+        <section className="animate-fade-up">
           <h2 className="text-2xl font-bold uppercase text-[color:var(--color-text-primary)] mb-6 text-center">
             The Team
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {contributors.map((contributor) => (
+            {contributors.map((contributor, index) => (
               <Link 
                 key={contributor.username}
                 href={contributor.githubUrl}
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="block rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-6 text-center shadow-[0_8px_20px_var(--color-glow)] transition-all hover:-translate-y-1 hover:shadow-[0_12px_28px_var(--color-glow)] hover:bg-[color:var(--color-card-hover-bg)] cursor-pointer"
+                className="block rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-6 text-center shadow-[0_8px_20px_var(--color-glow)] transition-all hover:-translate-y-1 hover:shadow-[0_12px_28px_var(--color-glow)] hover:bg-[color:var(--color-card-hover-bg)] cursor-pointer animate-fade-up"
+                style={{ animationDelay: `${index * 60}ms` }}
               >
                 <div className="flex flex-col items-center">
                   <Image

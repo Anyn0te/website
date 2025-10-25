@@ -32,6 +32,8 @@
   --color-nav-border: #dadde1;
   --color-nav-shadow: rgba(34, 40, 49, 0.12);
   --color-mobile-toggle-bg: #00adb5;
+  --ease-out-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 :root[data-theme="dark"] {
@@ -81,4 +83,126 @@ body {
 
 body.modal-open {
   overflow: hidden;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes glow-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 173, 181, 0.12);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(0, 173, 181, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 173, 181, 0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s var(--ease-out-smooth) both;
+}
+
+.animate-fade-up-delayed {
+  animation: fade-up 0.6s var(--ease-out-smooth) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s var(--ease-in-out-soft) both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s var(--ease-out-smooth) both;
+}
+
+.animate-glow {
+  animation: glow-pulse 2.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transition: none;
+  }
+
+  .animate-fade-up,
+  .animate-fade-up-delayed,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-glow {
+    animation: none !important;
+  }
+}
+.modal-layer {
+  pointer-events: none;
+}
+
+.modal-layer[data-state="opening"],
+.modal-layer[data-state="open"] {
+  pointer-events: auto;
+}
+
+.modal-backdrop {
+  opacity: 0;
+  transition: opacity 0.22s var(--ease-in-out-soft);
+}
+
+.modal-backdrop[data-state="opening"],
+.modal-backdrop[data-state="open"] {
+  opacity: 1;
+}
+
+.modal-backdrop[data-state="closing"] {
+  opacity: 0;
+}
+
+.modal-surface {
+  transform: translateY(10px) scale(0.98);
+  opacity: 0;
+  transition:
+    opacity 0.24s var(--ease-in-out-soft),
+    transform 0.24s var(--ease-in-out-soft);
+}
+
+.modal-surface[data-state="open"] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.modal-surface[data-state="opening"] {
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+}
+
+.modal-surface[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(12px) scale(0.96);
 }

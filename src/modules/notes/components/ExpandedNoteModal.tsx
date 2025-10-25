@@ -40,6 +40,8 @@ interface ExpandedNoteModalProps {
   isCommentDeletePending?: (commentId: string) => boolean;
 }
 
+const EXIT_DURATION_MS = 220;
+
 const ExpandedNoteModal = ({
   note,
   onClose,
@@ -58,14 +60,49 @@ const ExpandedNoteModal = ({
   isCommentEditPending,
   isCommentDeletePending,
 }: ExpandedNoteModalProps) => {
+  const [activeNote, setActiveNote] = useState<Note | null>(note);
+  const [isRendered, setIsRendered] = useState(Boolean(note));
+  const [transitionState, setTransitionState] = useState<"closed" | "opening" | "open" | "closing">(
+    note ? "open" : "closed",
+  );
   const [isFollowBusy, setIsFollowBusy] = useState(false);
 
   useEffect(() => {
-    setIsFollowBusy(false);
-  }, [note?.id]);
+    if (note) {
+      setActiveNote(note);
+      setIsRendered(true);
+      setTransitionState("opening");
+      setIsFollowBusy(false);
+      const raf = window.requestAnimationFrame(() => {
+        setTransitionState("open");
+      });
+      return () => {
+        window.cancelAnimationFrame(raf);
+      };
+    }
+
+    if (isRendered) {
+      setTransitionState("closing");
+      const timeout = window.setTimeout(() => {
+        setTransitionState("closed");
+        setIsRendered(false);
+        setActiveNote(null);
+      }, EXIT_DURATION_MS);
+      return () => {
+        window.clearTimeout(timeout);
+      };
+    }
+
+    setTransitionState("closed");
+    return;
+  }, [note, isRendered]);
 
   useEffect(() => {
-    if (!note) {
+    if (!activeNote) {
+      return;
+    }
+
+    if (transitionState !== "open" && transitionState !== "opening") {
       return;
     }
 
@@ -82,36 +119,36 @@ const ExpandedNoteModal = ({
       document.removeEventListener("keydown", handleEscape);
       document.body.classList.remove("modal-open");
     };
-  }, [note, onClose]);
+  }, [transitionState, activeNote, onClose]);
 
-  if (!note) {
+  if (!isRendered || !activeNote) {
     return null;
   }
 
-  const safeTitle = sanitizeHtml(note.title);
-  const safeContent = sanitizeHtml(note.content);
-  const authorLabel = note.authorName ? `@${note.authorName}` : "Anonymous";
-  const createdAtLabel = formatDateTime(note.createdAt);
+  const safeTitle = sanitizeHtml(activeNote.title);
+  const safeContent = sanitizeHtml(activeNote.content);
+  const authorLabel = activeNote.authorName ? `@${activeNote.authorName}` : "Anonymous";
+  const createdAtLabel = formatDateTime(activeNote.createdAt);
   const canFollowAuthor =
-    Boolean(note.authorName) && !note.isOwnNote && typeof onToggleFollow === "function";
+    Boolean(activeNote.authorName) && !activeNote.isOwnNote && typeof onToggleFollow === "function";
   const isFollowButtonDisabled = followActionPending || isFollowBusy;
-  const followButtonLabel = note.isFollowedAuthor
+  const followButtonLabel = activeNote.isFollowedAuthor
     ? "Unfollow"
-    : note.authorName
-      ? `Follow ${note.authorName}`
+    : activeNote.authorName
+      ? `Follow ${activeNote.authorName}`
       : "Follow";
-  const totalPublicComments = note.publicCommentCount;
-  const isLoved = note.viewerReaction === "love";
-  const isDisliked = note.viewerReaction === "dislike";
+  const totalPublicComments = activeNote.publicCommentCount;
+  const isLoved = activeNote.viewerReaction === "love";
+  const isDisliked = activeNote.viewerReaction === "dislike";
 
   const handleFollowClick = async () => {
-    if (!canFollowAuthor || !note || !onToggleFollow) {
+    if (!canFollowAuthor || !activeNote || !onToggleFollow) {
       return;
     }
 
     setIsFollowBusy(true);
     try {
-      await onToggleFollow(note.authorId, !note.isFollowedAuthor);
+      await onToggleFollow(activeNote.authorId, !activeNote.isFollowedAuthor);
     } catch (followError) {
       console.error("Follow action failed", followError);
     } finally {
@@ -120,23 +157,28 @@ const ExpandedNoteModal = ({
   };
 
   const handleReactionClick = (reaction: NoteReactionType) => {
-    if (!onReact || reactionActionPending) {
+    if (!onReact || reactionActionPending || !activeNote) {
       return;
     }
 
-    const nextReaction = note.viewerReaction === reaction ? null : reaction;
+    const nextReaction = activeNote.viewerReaction === reaction ? null : reaction;
     void onReact(nextReaction);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      className="modal-layer fixed inset-0 z-50 flex items-center justify-center"
+      data-state={transitionState}
+    >
       <div
-        className="absolute inset-0 h-full w-full bg-black/60"
+        className="modal-backdrop absolute inset-0 h-full w-full bg-black/60"
+        data-state={transitionState}
         onClick={onClose}
       />
 
       <div
-        className="relative z-50 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)] p-6 shadow-[0_16px_32px_var(--color-glow)] transition-colors"
+        className="modal-surface relative z-50 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)] p-6 shadow-[0_16px_32px_var(--color-glow)] transition-colors"
+        data-state={transitionState}
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -150,7 +192,7 @@ const ExpandedNoteModal = ({
         <header className="mb-6 border-b border-[color:var(--color-divider)] pb-5">
           <div className="flex flex-col gap-2">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--color-text-muted)]">
-              {note.visibility === "public" ? "Visible Note" : "Anonymous Note"}
+              {activeNote.visibility === "public" ? "Visible Note" : "Anonymous Note"}
             </p>
             <h2
               className="text-3xl font-extrabold text-[color:var(--color-text-primary)]"
@@ -175,7 +217,7 @@ const ExpandedNoteModal = ({
                 className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                   isFollowButtonDisabled
                     ? "cursor-not-allowed bg-[color:var(--color-button-disabled-bg)] text-[color:var(--color-button-disabled-text)]"
-                    : note.isFollowedAuthor
+                    : activeNote.isFollowedAuthor
                       ? "bg-[color:var(--color-neutral-button-bg)] text-[color:var(--color-neutral-button-text)] shadow-sm hover:bg-[color:var(--color-neutral-button-hover-bg)]"
                       : "bg-[color:var(--color-accent)] text-[color:var(--color-on-accent)] shadow-sm hover:bg-[color:var(--color-accent-hover)]"
                 }`}
@@ -186,9 +228,9 @@ const ExpandedNoteModal = ({
           </div>
         </header>
 
-        {note.media.length > 0 && (
+        {activeNote.media.length > 0 && (
           <div className="mb-6 space-y-4">
-            {note.media.map((mediaItem, index) => {
+            {activeNote.media.map((mediaItem, index) => {
               if (!mediaItem.url) {
                 return null;
               }
@@ -196,9 +238,9 @@ const ExpandedNoteModal = ({
               if (mediaItem.type === "image") {
                 return (
                   <Image
-                    key={`${note.id}-image-${index}`}
+                    key={`${activeNote.id}-image-${index}`}
                     src={mediaItem.url}
-                    alt={note.title || "Anonymous Image"}
+                    alt={activeNote.title || "Anonymous Image"}
                     className="mb-4 max-h-96 w-full rounded-lg object-contain"
                     width={500}
                     height={500}
@@ -209,7 +251,7 @@ const ExpandedNoteModal = ({
               if (mediaItem.type === "audio") {
                 return (
                   <audio
-                    key={`${note.id}-audio-${index}`}
+                    key={`${activeNote.id}-audio-${index}`}
                     controls
                     src={mediaItem.url}
                     className="w-full rounded-xl bg-[color:var(--color-audio-bg)] p-2 text-[color:var(--color-text-primary)]"
@@ -248,7 +290,7 @@ const ExpandedNoteModal = ({
               aria-label={isLoved ? "Remove love reaction" : "React with love"}
             >
               <span>❤️</span>
-              <span>{note.reactions.love}</span>
+              <span>{activeNote.reactions.love}</span>
             </button>
             <button
               type="button"
@@ -262,18 +304,18 @@ const ExpandedNoteModal = ({
               aria-label={isDisliked ? "Remove dislike reaction" : "React with dislike"}
             >
               <span>👎</span>
-              <span>{note.reactions.dislike}</span>
+              <span>{activeNote.reactions.dislike}</span>
             </button>
           </div>
         </div>
 
         <div className="mt-6">
           <CommentThread
-            comments={note.comments}
+            comments={activeNote.comments}
             viewerId={viewerId ?? null}
             viewerDisplayName={viewerDisplayName ?? null}
-            noteAuthorId={note.authorId}
-            noteCommentsLocked={note.commentsLocked}
+            noteAuthorId={activeNote.authorId}
+            noteCommentsLocked={activeNote.commentsLocked}
             publicCommentCount={totalPublicComments}
             createActionPending={commentActionPending ?? false}
             lockActionPending={commentsLockPending}

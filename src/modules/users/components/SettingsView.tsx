@@ -131,7 +131,7 @@ const SettingsView = () => {
 
   return (
     <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-[220px] md:pb-32 transition-colors">
-      <header className="mx-auto mb-8 max-w-3xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 shadow-[0_12px_26px_var(--color-glow)]">
+      <header className="mx-auto mb-8 max-w-3xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 shadow-[0_12px_26px_var(--color-glow)] animate-fade-up">
         <div className="flex flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
           <div>
             <h1 className="text-3xl font-bold text-[color:var(--color-text-primary)]">
@@ -175,18 +175,18 @@ const SettingsView = () => {
 
       <main className="mx-auto max-w-2xl space-y-6">
         {(isLoading && !profile) && (
-          <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center text-[color:var(--color-text-muted)] shadow-[0_8px_20px_var(--color-glow)]">
+          <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center text-[color:var(--color-text-muted)] shadow-[0_8px_20px_var(--color-glow)] animate-fade-up">
             Loading your preferences...
           </section>
         )}
 
         {error && !isLoading && (
-          <section className="rounded-2xl border border-red-200/70 bg-red-100 p-6 text-center text-red-900 shadow-md">
+          <section className="rounded-2xl border border-red-200/70 bg-red-100 p-6 text-center text-red-900 shadow-md animate-fade-up">
             {error}
           </section>
         )}
 
-        <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 shadow-[0_12px_26px_var(--color-glow)] transition-colors">
+        <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 shadow-[0_12px_26px_var(--color-glow)] transition-colors animate-fade-up">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label

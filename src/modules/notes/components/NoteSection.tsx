@@ -126,7 +126,7 @@ const NoteSection = ({
 
   return (
     <>
-      <section className="relative w-full transition-colors">
+      <section className="relative w-full transition-colors animate-fade-up-delayed">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-semibold uppercase text-[color:var(--color-text-primary)]">
             {title}
@@ -134,12 +134,12 @@ const NoteSection = ({
         </div>
 
         {notes.length === 0 ? (
-          <p className="rounded-xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-6 text-center text-sm font-medium text-[color:var(--color-text-muted)]">
+          <p className="rounded-xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-6 text-center text-sm font-medium text-[color:var(--color-text-muted)] animate-fade-up">
             {emptyMessage ?? "No notes to display yet."}
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-4 transition-all duration-500 ease-in-out sm:grid-cols-6 lg:grid-cols-12 xl:grid-cols-12 grid-flow-row-dense">
-            {notes.map((note) => {
+            {notes.map((note, index) => {
               const layout = resolveLayoutAttributes(note);
 
               return (
@@ -157,6 +157,7 @@ const NoteSection = ({
                   isReacting={Boolean(isReactionPending?.(note))}
                   className={layout.className}
                   size={layout.size}
+                  animationDelayMs={Math.min(index * 45, 360)}
                 />
               );
             })}

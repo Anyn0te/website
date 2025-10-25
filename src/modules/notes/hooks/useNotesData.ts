@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import useSWR from "swr";
+import { useCallback, useMemo } from "react";
 import { Note } from "../types";
 
 export interface UseNotesDataResult {
@@ -8,64 +9,67 @@ export interface UseNotesDataResult {
   reload: () => Promise<void>;
 }
 
+const fetchNotes = async (
+  _key: string,
+  viewerKey: string,
+  tokenKey: string | null | undefined,
+): Promise<Note[]> => {
+  const viewerId = viewerKey === "guest" ? null : viewerKey;
+  const token = tokenKey && tokenKey.length > 0 ? tokenKey : null;
+
+  const query = viewerId ? `?guestId=${encodeURIComponent(viewerId)}` : "";
+  const response = await fetch(`/api/notes${query}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: "no-store",
+  });
+
+  if (response.status === 401) {
+    throw new Error("Sign in to view your personalized feed.");
+  }
+
+  if (!response.ok) {
+    throw new Error("Failed to load notes.");
+  }
+
+  const payload = (await response.json()) as { notes?: Note[] };
+  return Array.isArray(payload.notes) ? payload.notes : [];
+};
+
 export const useNotesData = (
   viewerId: string | null,
   token: string | null,
 ): UseNotesDataResult => {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const isMountedRef = useRef(true);
+  const swrKey = useMemo(
+    () => ["notes", viewerId ?? "guest", token ?? ""],
+    [viewerId, token],
+  );
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const {
+    data,
+    error,
+    isLoading,
+    isValidating,
+    mutate,
+  } = useSWR<Note[]>(swrKey, fetchNotes, {
+    keepPreviousData: true,
+    revalidateOnFocus: true,
+  });
 
-  const fetchNotes = useCallback(async () => {
-    const query = viewerId ? `?guestId=${encodeURIComponent(viewerId)}` : "";
+  const reload = useCallback(async () => {
+    await mutate();
+  }, [mutate]);
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/notes${query}`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (response.status === 401) {
-        throw new Error("Sign in to view your personalized feed.");
-      }
-
-      if (!response.ok) {
-        throw new Error("Failed to load notes.");
-      }
-
-      const payload = (await response.json()) as { notes?: Note[] };
-      if (payload.notes && isMountedRef.current) {
-        setNotes(payload.notes);
-      }
-    } catch (fetchError) {
-      if (isMountedRef.current) {
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Unable to fetch notes."
-        );
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [viewerId, token]);
-
-  useEffect(() => {
-    void fetchNotes();
-  }, [fetchNotes]);
-
-  return { notes, isLoading, error, reload: fetchNotes };
+  return {
+    notes: data ?? [],
+    isLoading: (isLoading || isValidating) && !data,
+    error:
+      error instanceof Error
+        ? error.message
+        : error
+          ? "Unable to fetch notes."
+          : null,
+    reload,
+  };
 };

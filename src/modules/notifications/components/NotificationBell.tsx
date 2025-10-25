@@ -67,27 +67,56 @@ export const NotificationBell = ({
   anchor = "desktop",
 }: NotificationBellProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [renderPanel, setRenderPanel] = useState(false);
+  const [panelState, setPanelState] = useState<"closed" | "opening" | "open" | "closing">("closed");
   const containerRef = useRef<HTMLDivElement>(null);
   const toggleOpen = useCallback(() => {
-    const nextOpen = !isOpen;
-    setIsOpen(nextOpen);
+    setIsOpen((previous) => {
+      const next = !previous;
+      if (next) {
+        if (unreadCount > 0) {
+          void onMarkAllAsRead();
+        }
+        if (typeof queueMicrotask === "function") {
+          queueMicrotask(() => {
+            void onRefresh();
+          });
+        } else {
+          void Promise.resolve().then(() => {
+            void onRefresh();
+          });
+        }
+      }
+      return next;
+    });
+  }, [unreadCount, onMarkAllAsRead, onRefresh]);
 
-    if (!nextOpen) {
-      return;
-    }
-
-    if (unreadCount > 0) {
-      void onMarkAllAsRead();
-    }
-
-    if (typeof queueMicrotask === "function") {
-      queueMicrotask(() => {
-        void onRefresh();
+  useEffect(() => {
+    if (isOpen) {
+      setRenderPanel(true);
+      setPanelState("opening");
+      const raf = window.requestAnimationFrame(() => {
+        setPanelState("open");
       });
-    } else {
-      void onRefresh();
+      return () => {
+        window.cancelAnimationFrame(raf);
+      };
     }
-  }, [isOpen, unreadCount, onMarkAllAsRead, onRefresh]);
+
+    if (renderPanel) {
+      setPanelState("closing");
+      const timeout = window.setTimeout(() => {
+        setRenderPanel(false);
+        setPanelState("closed");
+      }, 200);
+      return () => {
+        window.clearTimeout(timeout);
+      };
+    }
+
+    setPanelState("closed");
+    return;
+  }, [isOpen, renderPanel]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -123,6 +152,7 @@ export const NotificationBell = ({
   const panelClassName = cx(
     styles.panel,
     anchor === "desktop" && styles.panelDesktop,
+    "animate-scale-in",
   );
   const canShowNativeBanner = nativeSupport && nativeReady;
 
@@ -130,16 +160,21 @@ export const NotificationBell = ({
     <div className={containerClassName} ref={containerRef}>
       <button
         type="button"
-        className={styles.trigger}
+        className={cx(styles.trigger, unreadCount > 0 && "animate-glow")}
         onClick={toggleOpen}
         aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
         aria-expanded={isOpen}
       >
         <span className="bi bi-bell" aria-hidden="true" />
       </button>
-      {unreadBadge && <span className={styles.badge}>{unreadBadge}</span>}
-      {isOpen && (
-        <div className={panelClassName} role="dialog" aria-label="Notifications">
+      {unreadBadge && <span className={`${styles.badge} animate-scale-in`}>{unreadBadge}</span>}
+      {renderPanel && (
+        <div
+          className={panelClassName}
+          role="dialog"
+          aria-label="Notifications"
+          data-state={panelState}
+        >
           <div className={styles.panelHeader}>
             <span className={styles.panelTitle}>Notifications</span>
             <button

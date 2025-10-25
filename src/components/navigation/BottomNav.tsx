@@ -41,6 +41,10 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
   const moreRef = useRef<HTMLLIElement>(null); 
   const mobileControlsRef = useRef<HTMLDivElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [renderMoreMenu, setRenderMoreMenu] = useState(false);
+  const [moreMenuState, setMoreMenuState] = useState<"closed" | "opening" | "open" | "closing">(
+    "closed",
+  );
   const pathname = usePathname();
   const supportsNativeNotifications = useMemo(
     () => typeof window !== "undefined" && "Notification" in window,
@@ -59,6 +63,33 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
     setNativePermission(window.Notification.permission);
     setPermissionReady(true);
   }, [supportsNativeNotifications]);
+
+  useEffect(() => {
+    if (isMoreOpen) {
+      setRenderMoreMenu(true);
+      setMoreMenuState("opening");
+      const raf = window.requestAnimationFrame(() => {
+        setMoreMenuState("open");
+      });
+      return () => {
+        window.cancelAnimationFrame(raf);
+      };
+    }
+
+    if (renderMoreMenu) {
+      setMoreMenuState("closing");
+      const timeout = window.setTimeout(() => {
+        setRenderMoreMenu(false);
+        setMoreMenuState("closed");
+      }, 180);
+      return () => {
+        window.clearTimeout(timeout);
+      };
+    }
+
+    setMoreMenuState("closed");
+    return;
+  }, [isMoreOpen, renderMoreMenu]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -286,13 +317,17 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
                 <span className={styles.navLabel}>More</span>
                 <span className={`bi bi-chevron-down ${styles.moreIcon}`} aria-hidden="true" />
             </button>
-            {isMoreOpen && (
-                <ul id="more-navigation-menu" className={styles.moreDropdown}>
+            {renderMoreMenu && (
+                <ul
+                  id="more-navigation-menu"
+                  className={styles.moreDropdown}
+                  data-state={moreMenuState}
+                >
                     {moreItems.map((item) => {
                         const isActive =
                             pathname === item.href ||
                             pathname?.startsWith(`${item.href}/`);
-                        
+
                         const dropDownItemClassName = [
                             styles.moreDropdownItem,
                             isActive ? styles.navItemActive : "",
