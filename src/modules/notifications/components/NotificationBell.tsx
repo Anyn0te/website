@@ -174,6 +174,24 @@ export const NotificationBell = ({
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      return;
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (data && typeof data === "object" && data.type === "anynote:notification-update") {
+        void onRefresh();
+      }
+    };
+
+    navigator.serviceWorker.addEventListener("message", handleMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", handleMessage);
+    };
+  }, [onRefresh]);
+
   const unreadBadge = useMemo(() => {
     if (unreadCount <= 0) {
       return null;

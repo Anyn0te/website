@@ -28,7 +28,21 @@ self.addEventListener("push", (event) => {
     },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  const notifyClients = self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((clientList) => {
+      clientList.forEach((client) => {
+        client.postMessage({ type: "anynote:notification-update" });
+      });
+    })
+    .catch(() => undefined);
+
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      notifyClients,
+    ]),
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

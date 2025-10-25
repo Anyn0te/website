@@ -79,7 +79,7 @@ export const useNotifications = (
     swrKey,
     fetchNotifications,
     {
-      refreshInterval: pollIntervalMs,
+      refreshInterval: 0,
       keepPreviousData: true,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
