@@ -133,9 +133,21 @@ const CreateNoteModal = ({
     const files = event.target.files ? Array.from(event.target.files) : [];
     event.target.value = "";
 
-    const nextFiles: File[] = [];
+    if (files.length === 0) {
+      return;
+    }
+
+    let nextFiles: File[] = [...mediaFiles];
 
     for (const file of files) {
+      const isImage = file.type.startsWith("image/");
+      const isAudio = file.type.startsWith("audio/");
+
+      if (!isImage && !isAudio) {
+        setError("Only image or audio files are allowed.");
+        return;
+      }
+
       if (file.size > MAX_FILE_SIZE) {
         setError(
           `File size (${(file.size / 1024 / 1024).toFixed(
@@ -145,15 +157,24 @@ const CreateNoteModal = ({
         return;
       }
 
-      if (!file.type.startsWith("image/") && !file.type.startsWith("audio/")) {
-        setError("Only image or audio files are allowed.");
-        return;
+      if (isImage) {
+        const existingIndex = nextFiles.findIndex((existing) => existing.type.startsWith("image/"));
+        if (existingIndex >= 0) {
+          nextFiles = nextFiles.filter((_, idx) => idx !== existingIndex);
+        }
+      }
+
+      if (isAudio) {
+        const existingIndex = nextFiles.findIndex((existing) => existing.type.startsWith("audio/"));
+        if (existingIndex >= 0) {
+          nextFiles = nextFiles.filter((_, idx) => idx !== existingIndex);
+        }
       }
 
       nextFiles.push(file);
     }
 
-    setMediaFiles((previous) => [...previous, ...nextFiles]);
+    setMediaFiles(nextFiles);
     if (wordCount <= MAX_WORD_COUNT) {
       setError(null);
     }
@@ -286,7 +307,7 @@ const CreateNoteModal = ({
 
           <div className="flex flex-col">
             <label className="mb-2 text-lg font-semibold text-[color:var(--color-text-primary)]">
-              Optional Media (Image or Audio, Max 20MB)
+              Optional Media (Up to 1 image and 1 audio, max 20MB each)
             </label>
             <div className="flex items-center">
               <label
@@ -301,7 +322,6 @@ const CreateNoteModal = ({
                 accept="image/*,audio/*"
                 onChange={handleFileChange}
                 className="hidden"
-                multiple
               />
 
               {mediaFiles.length > 0 && !error && (
@@ -310,8 +330,9 @@ const CreateNoteModal = ({
                   <ul className="text-sm text-[color:var(--color-text-accent)]">
                     {mediaFiles.map((file, index) => (
                       <li key={index}>
-                        <strong>{file.name}</strong> (
-                        {(file.size / 1024 / 1024).toFixed(2)} MB)
+                        <strong>{file.name}</strong>
+                        {file.type.startsWith("image/") ? " (Image" : " (Audio"}
+                        {`, ${(file.size / 1024 / 1024).toFixed(2)} MB)`}
                       </li>
                     ))}
                   </ul>
