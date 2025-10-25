@@ -12,6 +12,10 @@
   gap: 16px;
 }
 
+.container[data-modal-open="true"] {
+  display: none;
+}
+
 .nav {
   pointer-events: auto;
   max-width: 900px; 
@@ -39,6 +43,8 @@
   box-shadow: 0 12px 24px var(--color-nav-shadow);
   padding: 0 12px;
   height: 72px;
+  align-items: center;
+  gap: 10px;
 }
 
 .mobileControls {
@@ -161,6 +167,26 @@
     position: relative;
 }
 
+.notificationPrompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  background: rgba(234, 179, 8, 0.16);
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  color: rgba(161, 98, 7, 0.95);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.notificationPrompt:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(234, 179, 8, 0.25);
+}
+
 .moreDropdown {
     position: absolute;
     bottom: 100%;
@@ -227,6 +253,10 @@
     gap: 10px;
     z-index: 100;
     pointer-events: auto;
+  }
+
+  .mobileControls[data-modal-open="true"] {
+    display: none;
   }
 
   .navItemDesktopMore {

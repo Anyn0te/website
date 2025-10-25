@@ -130,7 +130,7 @@ const SettingsView = () => {
   const isDisabledForGuests = !canEditProfile || isSaving;
 
   return (
-    <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-32 transition-colors">
+    <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-[220px] md:pb-32 transition-colors">
       <header className="mx-auto mb-8 max-w-3xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 shadow-[0_12px_26px_var(--color-glow)]">
         <div className="flex flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
           <div>

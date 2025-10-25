@@ -369,8 +369,8 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   );
 
   return (
-    <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-32 transition-colors">
-      <header className="mx-auto mb-8 max-w-5xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center shadow-[0_12px_24px_var(--color-glow)]">
+    <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-[220px] md:pb-32 transition-colors">
+      <header className="mx-auto mb-10 max-w-5xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center shadow-[0_12px_24px_var(--color-glow)]">
         <h1 className="text-3xl font-bold tracking-wide text-[color:var(--color-text-primary)]">
           {pageHeading}
         </h1>
@@ -384,7 +384,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         )}
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-6">
+      <main className="mx-auto w-full space-y-6">
         {isLoading && (
           <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center text-[color:var(--color-text-muted)] shadow-[0_8px_20px_var(--color-glow)]">
             Loading notes...
@@ -402,7 +402,6 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
             title={sectionTitle}
             notes={filteredNotes}
             emptyMessage={emptyMessage}
-            viewAllPath={variant === "dashboard" ? "/notes" : undefined} 
             onFollowStatusChange={
               followHandler && (variant === "followed" || variant === "dashboard")
                 ? followHandler

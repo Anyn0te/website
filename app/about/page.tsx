@@ -37,7 +37,7 @@ export default function AboutPage() {
   };
   
   return (
-    <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-32 transition-colors">
+    <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-[220px] md:pb-32 transition-colors">
       <header className="mx-auto mb-8 max-w-5xl rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center shadow-[0_12px_24px_var(--color-glow)]">
         <h1 className="text-3xl font-bold tracking-wide text-[color:var(--color-text-primary)]">
           Anyn0te

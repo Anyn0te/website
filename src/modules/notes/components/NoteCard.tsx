@@ -2,16 +2,46 @@ import { MouseEvent } from "react";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { Note, NoteReactionType } from "../types";
 
+export type NoteCardSize = "small" | "medium" | "large";
+
 interface NoteCardProps {
   note: Note;
   onClick: () => void;
   onReact?: (reaction: NoteReactionType | null) => void;
   isReacting?: boolean;
+  className?: string;
+  size?: NoteCardSize;
 }
 
-const NoteCard = ({ note, onClick, onReact, isReacting = false }: NoteCardProps) => {
+const sizeStyles = {
+  small: {
+    wrapper: "p-4 gap-3",
+    title: "text-lg",
+    content: "text-sm leading-relaxed line-clamp-4",
+  },
+  medium: {
+    wrapper: "p-5 gap-4",
+    title: "text-xl",
+    content: "text-sm leading-relaxed line-clamp-6",
+  },
+  large: {
+    wrapper: "p-6 gap-5",
+    title: "text-2xl",
+    content: "text-base leading-relaxed line-clamp-7",
+  },
+} as const;
+
+const NoteCard = ({
+  note,
+  onClick,
+  onReact,
+  isReacting = false,
+  className = "",
+  size = "medium",
+}: NoteCardProps) => {
   const safeTitle = sanitizeHtml(note.title);
   const safeContent = sanitizeHtml(note.content);
+  const sizeTokens = sizeStyles[size];
 
   const imageCount = note.media.filter((media) => media.type === "image").length;
   const audioCount = note.media.filter((media) => media.type === "audio").length;
@@ -35,9 +65,9 @@ const NoteCard = ({ note, onClick, onReact, isReacting = false }: NoteCardProps)
   return (
     <div
       onClick={onClick}
-      className="flex h-56 cursor-pointer flex-col justify-start rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-5 shadow-[0_8px_20px_var(--color-glow)] transition-transform transition-shadow duration-200 hover:-translate-y-1 hover:bg-[color:var(--color-card-hover-bg)] hover:shadow-[0_12px_28px_var(--color-glow)]"
+      className={`group flex h-full w-full cursor-pointer flex-col justify-start rounded-3xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] shadow-[0_8px_20px_var(--color-glow)] transition-transform transition-shadow duration-200 hover:-translate-y-1 hover:bg-[color:var(--color-card-hover-bg)] hover:shadow-[0_12px_28px_var(--color-glow)] ${sizeTokens.wrapper} ${className}`}
     >
-      <div className="mb-2 flex items-center justify-between text-[color:var(--color-text-muted)]">
+      <div className="flex items-center justify-between text-[color:var(--color-text-muted)]">
         <span className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-text-accent)]">
           {displayAuthor}
         </span>
@@ -48,43 +78,50 @@ const NoteCard = ({ note, onClick, onReact, isReacting = false }: NoteCardProps)
         )}
       </div>
       <h3
-        className="mb-2 overflow-hidden text-ellipsis whitespace-nowrap text-lg font-bold uppercase tracking-wider text-[color:var(--color-text-primary)]"
+        className={`overflow-hidden text-[color:var(--color-text-primary)] font-bold uppercase tracking-wide ${sizeTokens.title}`}
         dangerouslySetInnerHTML={{ __html: safeTitle }}
       />
 
       <div className="flex-grow">
         <p
-          className="line-clamp-2 overflow-hidden text-sm text-[color:var(--color-text-body)]"
+          className={`overflow-hidden text-[color:var(--color-text-body)] ${sizeTokens.content}`}
           dangerouslySetInnerHTML={{ __html: safeContent }}
         />
       </div>
 
       {(imageCount > 0 || audioCount > 0) && (
-        <span className="mt-3 text-xs font-semibold text-[color:var(--color-text-accent)]">
+        <span className="text-xs font-semibold text-[color:var(--color-text-accent)]">
           {imageCount > 0 && `🖼️ ${imageCount} Image${imageCount > 1 ? "s" : ""}`}
           {imageCount > 0 && audioCount > 0 && " / "}
           {audioCount > 0 && `🎶 ${audioCount} Audio${audioCount > 1 ? "s" : ""}`}
         </span>
       )}
 
-      <div className="mt-3 flex items-center justify-between text-xs font-semibold text-[color:var(--color-text-muted)]">
-        <span className="inline-flex items-center gap-1" aria-label={`Thoughts ${commentCount}`}>
-          <span aria-hidden="true">💬</span>
-          <span>{commentCount} Thoughts</span>
+      <div className="flex items-center justify-between text-xs font-semibold text-[color:var(--color-text-muted)]">
+        <span
+          className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-button-muted-bg)] px-3 py-1"
+          aria-label={`Thoughts ${commentCount}`}
+        >
+          <span className="text-base" aria-hidden="true">
+            💬
+          </span>
+          <span>{commentCount}</span>
         </span>
         {commentsLocked && (
-          <span className="inline-flex items-center gap-1 text-[color:var(--color-text-accent)]">
-            <span aria-hidden="true">🔒</span>
-            <span>Thoughts Locked</span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-text-accent)] px-3 py-1 text-[color:var(--color-text-accent)]">
+            <span className="text-base" aria-hidden="true">
+              🔒
+            </span>
+            <span>Locked</span>
           </span>
         )}
       </div>
 
-      <div className="mt-2 flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-wide text-[color:var(--color-text-muted)]">
+      <div className="flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-wide text-[color:var(--color-text-muted)]">
         <span>Feelings</span>
       </div>
 
-      <div className="mt-1 flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <button
           type="button"
           className={`flex flex-1 items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${

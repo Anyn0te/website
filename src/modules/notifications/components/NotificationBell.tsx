@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./NotificationBell.module.css";
-import { Notification } from "@/modules/notifications/types";
+import { Notification as AppNotification } from "@/modules/notifications/types";
 
 type AnchorVariant = "mobile" | "desktop";
 
@@ -10,15 +10,19 @@ const cx = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
 interface NotificationBellProps {
-  notifications: Notification[];
+  notifications: AppNotification[];
   unreadCount: number;
   isLoading: boolean;
   onMarkAllAsRead: () => Promise<void>;
   onRefresh: () => Promise<void>;
   anchor?: AnchorVariant;
+  nativeSupport?: boolean;
+  nativeReady?: boolean;
+  nativePermission?: NotificationPermission;
+  onRequestNativePermission?: () => Promise<void>;
 }
 
-const formatMessage = (notification: Notification): string => {
+const formatMessage = (notification: AppNotification): string => {
   const actor = notification.actorName ?? "Someone";
 
   if (notification.type === "reaction") {
@@ -56,22 +60,34 @@ export const NotificationBell = ({
   isLoading,
   onMarkAllAsRead,
   onRefresh,
+  nativeSupport = false,
+  nativeReady = true,
+  nativePermission = "default",
+  onRequestNativePermission,
   anchor = "desktop",
 }: NotificationBellProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const toggleOpen = useCallback(() => {
-    setIsOpen((prev) => {
-      const next = !prev;
-      if (!prev && unreadCount > 0) {
-        void onMarkAllAsRead();
-      }
-      if (!prev) {
+    const nextOpen = !isOpen;
+    setIsOpen(nextOpen);
+
+    if (!nextOpen) {
+      return;
+    }
+
+    if (unreadCount > 0) {
+      void onMarkAllAsRead();
+    }
+
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(() => {
         void onRefresh();
-      }
-      return next;
-    });
-  }, [unreadCount, onMarkAllAsRead, onRefresh]);
+      });
+    } else {
+      void onRefresh();
+    }
+  }, [isOpen, unreadCount, onMarkAllAsRead, onRefresh]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -108,6 +124,7 @@ export const NotificationBell = ({
     styles.panel,
     anchor === "desktop" && styles.panelDesktop,
   );
+  const canShowNativeBanner = nativeSupport && nativeReady;
 
   return (
     <div className={containerClassName} ref={containerRef}>
@@ -134,12 +151,31 @@ export const NotificationBell = ({
             </button>
           </div>
           <div className={styles.panelBody}>
+            {canShowNativeBanner && nativePermission !== "granted" && (
+              <div className={styles.permissionBanner}>
+                <span className={styles.permissionText}>
+                  {nativePermission === "denied"
+                    ? "Browser notifications are blocked. Open your site settings to allow them."
+                    : "Enable desktop notifications to receive real-time updates."}
+                </span>
+                {nativePermission !== "denied" &&
+                  onRequestNativePermission && (
+                  <button
+                    type="button"
+                    className={styles.permissionButton}
+                    onClick={() => void onRequestNativePermission()}
+                  >
+                    Allow
+                  </button>
+                )}
+              </div>
+            )}
             {isLoading ? (
               <p className={styles.emptyState}>Loading notifications…</p>
             ) : notifications.length === 0 ? (
               <p className={styles.emptyState}>You&apos;re all caught up.</p>
             ) : (
-              notifications.map((notification) => (
+              notifications.slice(0, 6).map((notification) => (
                 <div
                   key={notification.id}
                   className={cx(

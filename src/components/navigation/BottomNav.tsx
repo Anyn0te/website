@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import styles from "./BottomNav.module.css";
 import { NotificationBell } from "@/modules/notifications/components/NotificationBell";
 import { useNotifications } from "@/modules/notifications/hooks/useNotifications";
+import { Notification as AppNotification } from "@/modules/notifications/types";
 
 interface BottomNavProps {
   onOpenCreateModal: () => void;
@@ -13,20 +14,137 @@ interface BottomNavProps {
   token?: string | null;
 }
 
+const describeNotification = (notification: AppNotification): string => {
+  const actor = notification.actorName ?? "Someone";
+
+  if (notification.type === "reaction") {
+    const reactionLabel =
+      notification.reaction === "love"
+        ? "loved"
+        : notification.reaction === "dislike"
+          ? "disliked"
+          : "reacted to";
+    return `${actor} ${reactionLabel} "${notification.noteTitle}"`;
+  }
+
+  if (notification.isPrivate) {
+    return `${actor} sent a private thought on "${notification.noteTitle}"`;
+  }
+
+  return `${actor} commented on "${notification.noteTitle}"`;
+};
+
 const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomNavProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false); 
   const navRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLLIElement>(null); 
   const mobileControlsRef = useRef<HTMLDivElement>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const pathname = usePathname();
+  const supportsNativeNotifications = useMemo(
+    () => typeof window !== "undefined" && "Notification" in window,
+    [],
+  );
+  const [nativePermission, setNativePermission] =
+    useState<NotificationPermission>("default");
+  const [permissionReady, setPermissionReady] = useState(false);
+
+  useEffect(() => {
+    if (!supportsNativeNotifications) {
+      setPermissionReady(true);
+      return;
+    }
+
+    setNativePermission(window.Notification.permission);
+    setPermissionReady(true);
+  }, [supportsNativeNotifications]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const evaluateModalState = () => {
+      setIsModalOpen(document.body.classList.contains("modal-open"));
+    };
+
+    evaluateModalState();
+
+    const observer = new MutationObserver(evaluateModalState);
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const dispatchNativeNotifications = useCallback(
+    (incoming: AppNotification[]) => {
+      if (!supportsNativeNotifications) {
+        return;
+      }
+
+      if (!permissionReady) {
+        return;
+      }
+
+      if (nativePermission !== "granted") {
+        return;
+      }
+
+      const isDocumentHidden =
+        typeof document !== "undefined"
+          ? document.visibilityState === "hidden"
+          : false;
+
+      if (!isDocumentHidden) {
+        return;
+      }
+
+      incoming.forEach((notification) => {
+        const title = notification.actorName ?? "Anyn0te";
+        const body = describeNotification(notification);
+        try {
+          new window.Notification(title, {
+            body,
+            tag: notification.id,
+            data: { notificationId: notification.id },
+          });
+        } catch (nativeError) {
+          console.error("Failed to dispatch browser notification", nativeError);
+        }
+      });
+    },
+    [supportsNativeNotifications, nativePermission, permissionReady],
+  );
+
   const {
     notifications,
     unreadCount,
     isLoading: notificationsLoading,
     markAllAsRead,
     refresh,
-  } = useNotifications(viewerId, token);
+  } = useNotifications(viewerId, token, {
+    pollIntervalMs: 15000,
+    onNewNotifications: dispatchNativeNotifications,
+  });
+
+  const handleRequestNativePermission = useCallback(async () => {
+    if (!supportsNativeNotifications) {
+      return;
+    }
+
+    try {
+      const result = await window.Notification.requestPermission();
+      setNativePermission(result);
+      if (result === "granted") {
+        await refresh();
+      }
+    } catch (permissionError) {
+      console.error("Unable to request browser notification permission", permissionError);
+    }
+  }, [supportsNativeNotifications, refresh]);
 
   const navItems = useMemo(
     () => [
@@ -98,7 +216,12 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
 
   return (
     <>
-      <div className={styles.container} ref={navRef} data-open={isOpen}>
+      <div
+        className={styles.container}
+        ref={navRef}
+        data-open={isOpen}
+        data-modal-open={isModalOpen}
+      >
         <nav className={navClassName} aria-label="Primary navigation">
           <ul className={itemsClassName} id="primary-navigation">
           {navItems.map((item) => {
@@ -197,24 +320,53 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
         </ul>
         </nav>
         <div className={styles.desktopBell}>
+            {supportsNativeNotifications && permissionReady && nativePermission === "default" && (
+              <button
+                type="button"
+                className={styles.notificationPrompt}
+                onClick={() => void handleRequestNativePermission()}
+              >
+                <span className="bi bi-bell-fill" aria-hidden="true" />
+                Enable alerts
+              </button>
+            )}
+            {supportsNativeNotifications && permissionReady && nativePermission === "denied" && (
+              <span className={styles.notificationPrompt} role="status">
+                <span className="bi bi-shield-lock" aria-hidden="true" />
+                Notifications blocked
+              </span>
+            )}
             <NotificationBell
               notifications={notifications}
               unreadCount={unreadCount}
               isLoading={notificationsLoading}
               onMarkAllAsRead={markAllAsRead}
               onRefresh={refresh}
+              nativeSupport={supportsNativeNotifications}
+              nativeReady={permissionReady}
+              nativePermission={nativePermission}
+              onRequestNativePermission={handleRequestNativePermission}
               anchor="desktop"
             />
         </div>
       </div>
 
-      <div className={styles.mobileControls} data-open={isOpen} ref={mobileControlsRef}>
+      <div
+        className={styles.mobileControls}
+        data-open={isOpen}
+        data-modal-open={isModalOpen}
+        ref={mobileControlsRef}
+      >
         <NotificationBell
           notifications={notifications}
           unreadCount={unreadCount}
           isLoading={notificationsLoading}
           onMarkAllAsRead={markAllAsRead}
           onRefresh={refresh}
+          nativeSupport={supportsNativeNotifications}
+          nativeReady={permissionReady}
+          nativePermission={nativePermission}
+          onRequestNativePermission={handleRequestNativePermission}
           anchor="mobile"
         />
         <button
