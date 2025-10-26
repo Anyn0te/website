@@ -1393,6 +1393,11 @@ export const getAggregatedNotesForUser = async (
   }
 
   aggregated.sort((a, b) => {
+    const createdDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (createdDiff !== 0) {
+      return createdDiff;
+    }
+
     if (b.publicCommentCount !== a.publicCommentCount) {
       return b.publicCommentCount - a.publicCommentCount;
     }
@@ -1400,7 +1405,11 @@ export const getAggregatedNotesForUser = async (
       return b.reactions.love - a.reactions.love;
     }
 
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (b.reactions.dislike !== a.reactions.dislike) {
+      return b.reactions.dislike - a.reactions.dislike;
+    }
+
+    return (b.title ?? "").localeCompare(a.title ?? "");
   });
 
   return aggregated;

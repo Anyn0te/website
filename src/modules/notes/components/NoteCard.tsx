@@ -51,6 +51,11 @@ const NoteCard = ({
   const authorBadge = note.isOwnNote ? "You" : note.isFollowedAuthor ? "Following" : null;
   const isLoved = note.viewerReaction === "love";
   const isDisliked = note.viewerReaction === "dislike";
+  const reactedWrapperClass = isLoved
+    ? "border-rose-500/70 bg-rose-950/10"
+    : isDisliked
+      ? "border-slate-600/60 bg-slate-900/10"
+      : "";
   const commentCount = note.publicCommentCount;
   const commentsLocked = note.commentsLocked;
 
@@ -67,7 +72,7 @@ const NoteCard = ({
   return (
     <div
       onClick={onClick}
-      className={`group flex h-full w-full cursor-pointer flex-col justify-start rounded-3xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] shadow-[0_8px_20px_var(--color-glow)] transition-transform transition-shadow duration-200 hover:-translate-y-1 hover:bg-[color:var(--color-card-hover-bg)] hover:shadow-[0_12px_28px_var(--color-glow)] ${sizeTokens.wrapper} animate-fade-up ${className}`}
+      className={`group flex h-full w-full cursor-pointer flex-col justify-start rounded-3xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] shadow-[0_8px_20px_var(--color-glow)] transition-transform transition-shadow duration-200 hover:-translate-y-1 hover:bg-[color:var(--color-card-hover-bg)] hover:shadow-[0_12px_28px_var(--color-glow)] ${reactedWrapperClass} ${sizeTokens.wrapper} animate-fade-up ${className}`}
       style={
         animationDelayMs !== undefined
           ? { animationDelay: `${animationDelayMs}ms` }

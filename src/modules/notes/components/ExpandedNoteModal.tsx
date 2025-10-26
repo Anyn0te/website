@@ -177,6 +177,12 @@ const ExpandedNoteModal = ({
   const canManageNote = Boolean(
     globalModeration || activeNote.viewerCanModerate || activeNote.isOwnNote,
   );
+  const wrapperReactionClass =
+    activeNote.viewerReaction === "love"
+      ? "ring-2 ring-rose-400/70"
+      : activeNote.viewerReaction === "dislike"
+        ? "ring-2 ring-slate-500/60"
+        : "";
 
   const handleFollowClick = async () => {
     if (!canFollowAuthor || !activeNote || !onToggleFollow) {
@@ -280,7 +286,7 @@ const ExpandedNoteModal = ({
       />
 
       <div
-        className="modal-surface relative z-50 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)] p-6 shadow-[0_16px_32px_var(--color-glow)] transition-colors"
+        className={`modal-surface relative z-50 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)] p-6 shadow-[0_16px_32px_var(--color-glow)] transition-colors ${wrapperReactionClass}`}
         data-state={transitionState}
         onClick={(event) => event.stopPropagation()}
       >
