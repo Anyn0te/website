@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Note, NoteReactionType } from "../types";
-import ExpandedNoteModal from "./ExpandedNoteModal";
+import ExpandedNoteModal, { type NoteUpdatePayload } from "./ExpandedNoteModal";
 import NoteCard, { type NoteCardSize } from "./NoteCard";
 import type { CommentSubmitPayload } from "./CommentThread";
 
@@ -17,11 +17,16 @@ interface NoteSectionProps {
   onToggleCommentsLock?: (note: Note, locked: boolean) => Promise<void> | void;
   viewerId?: string | null;
   viewerDisplayName?: string | null;
+  viewerCanModerateGlobally?: boolean;
   commentLockActionPending?: (note: Note) => boolean;
   onEditComment?: (note: Note, commentId: string, content: string) => Promise<void> | void;
   onDeleteComment?: (note: Note, commentId: string) => Promise<void> | void;
   isCommentEditPending?: (note: Note, commentId: string) => boolean;
   isCommentDeletePending?: (note: Note, commentId: string) => boolean;
+  onUpdateNote?: (note: Note, payload: NoteUpdatePayload) => Promise<void> | void;
+  onDeleteNote?: (note: Note) => Promise<void> | void;
+  isNoteUpdatePending?: (note: Note) => boolean;
+  isNoteDeletePending?: (note: Note) => boolean;
 }
 
 type GridSpanTier = 1 | 2 | 3 | 4 | 5 | 6;
@@ -39,11 +44,16 @@ const NoteSection = ({
   onToggleCommentsLock,
   viewerId,
   viewerDisplayName,
+  viewerCanModerateGlobally,
   commentLockActionPending,
   onEditComment,
   onDeleteComment,
   isCommentEditPending,
   isCommentDeletePending,
+  onUpdateNote,
+  onDeleteNote,
+  isNoteUpdatePending,
+  isNoteDeletePending,
 }: NoteSectionProps) => {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
@@ -207,6 +217,7 @@ const NoteSection = ({
         }
         viewerId={viewerId}
         viewerDisplayName={viewerDisplayName}
+        viewerGlobalCanModerate={viewerCanModerateGlobally}
         commentsLockPending={
           selectedNote ? Boolean(commentLockActionPending?.(selectedNote)) : false
         }
@@ -233,6 +244,27 @@ const NoteSection = ({
           selectedNote && isCommentDeletePending
             ? (commentId) => isCommentDeletePending(selectedNote, commentId)
             : undefined
+        }
+        onUpdateNote={
+          onUpdateNote && selectedNote
+            ? async (updatePayload) => {
+                await onUpdateNote(selectedNote, updatePayload);
+              }
+            : undefined
+        }
+        onDeleteNote={
+          onDeleteNote && selectedNote
+            ? async () => {
+                await onDeleteNote(selectedNote);
+                setSelectedNote(null);
+              }
+            : undefined
+        }
+        noteUpdatePending={
+          selectedNote ? Boolean(isNoteUpdatePending?.(selectedNote)) : false
+        }
+        noteDeletePending={
+          selectedNote ? Boolean(isNoteDeletePending?.(selectedNote)) : false
         }
       />
     </>

@@ -6,8 +6,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken } from "@/lib/firebase/admin";
 import {
   appendNoteToUser,
+  deleteNoteForUser,
   getAggregatedNotesForUser,
   getOrCreateUser,
+  updateNoteForUser,
 } from "@/modules/users/server/userRepository";
 import { NoteMedia, NoteMediaType, NoteVisibility, StoredNote } from "@/modules/notes/types";
 
@@ -244,6 +246,138 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { error: "Unable to load notes." },
       { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const token = extractTokenFromRequest(request);
+    const payload = (await request.json()) as {
+      noteId?: string;
+      authorId?: string;
+      title?: string | null;
+      content?: string | null;
+      userId?: string;
+    };
+
+    let editorId: string | null = null;
+    if (token) {
+      const decoded = await verifyIdToken(token);
+      editorId = decoded.uid;
+    } else {
+      editorId = payload.userId?.trim() ?? request.cookies.get("anynote_guest_id")?.value ?? null;
+    }
+
+    if (!editorId) {
+      return NextResponse.json({ error: "Missing user identifier." }, { status: 401 });
+    }
+
+    const noteId = payload.noteId?.trim();
+    const authorId = payload.authorId?.trim();
+
+    if (!noteId || !authorId) {
+      return NextResponse.json({ error: "Invalid note update request." }, { status: 400 });
+    }
+
+    if (!token && editorId !== authorId) {
+      return NextResponse.json(
+        { error: "Moderator actions require authentication." },
+        { status: 401 },
+      );
+    }
+
+    const updatedNote = await updateNoteForUser({
+      authorId,
+      noteId,
+      editorId,
+      title: payload.title ?? undefined,
+      content: payload.content ?? undefined,
+    });
+
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidatePath("/followed");
+    revalidatePath("/notes");
+    revalidatePath("/minotes");
+
+    return NextResponse.json({ note: updatedNote }, { status: 200 });
+  } catch (error) {
+    console.error("Note update error:", error);
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Unable to update note.",
+      },
+      { status: 400 },
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = extractTokenFromRequest(request);
+    const payload = (await request.json()) as {
+      noteId?: string;
+      authorId?: string;
+      userId?: string;
+    };
+
+    let actorId: string | null = null;
+    if (token) {
+      const decoded = await verifyIdToken(token);
+      actorId = decoded.uid;
+    } else {
+      actorId = payload.userId?.trim() ?? request.cookies.get("anynote_guest_id")?.value ?? null;
+    }
+
+    if (!actorId) {
+      return NextResponse.json({ error: "Missing user identifier." }, { status: 401 });
+    }
+
+    const noteId = payload.noteId?.trim();
+    const authorId = payload.authorId?.trim();
+
+    if (!noteId || !authorId) {
+      return NextResponse.json({ error: "Invalid note delete request." }, { status: 400 });
+    }
+
+    if (!token && actorId !== authorId) {
+      return NextResponse.json(
+        { error: "Moderator actions require authentication." },
+        { status: 401 },
+      );
+    }
+
+    await deleteNoteForUser({
+      authorId,
+      noteId,
+      actorId,
+    });
+
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidatePath("/followed");
+    revalidatePath("/notes");
+    revalidatePath("/minotes");
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("Note delete error:", error);
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Unable to delete note.",
+      },
+      { status: 400 },
     );
   }
 }

@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
           themePreference: user.themePreference,
           following: user.following,
           followers: user.followers,
+          role: user.role ?? "anonymous",
         },
       },
       { status: 200 },
@@ -95,6 +96,7 @@ export async function PUT(request: NextRequest) {
           themePreference: updatedUser.themePreference,
           following: updatedUser.following,
           followers: updatedUser.followers,
+          role: updatedUser.role ?? "anonymous",
         },
       },
       { status: 200 }

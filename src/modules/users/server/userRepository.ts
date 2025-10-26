@@ -15,12 +15,34 @@ import {
   PushSubscriptionRecord,
   ThemePreference,
   UserRecord,
+  UserRole,
   UserSettingsPayload,
 } from "../types";
 
 const STORAGE_ROOT = path.join(process.cwd(), "storage");
 const USERS_DIRECTORY = path.join(STORAGE_ROOT, "users");
 const MAX_NOTIFICATIONS = 100;
+const normalizeRole = (value: unknown): UserRole => {
+  if (value === "admin" || value === "moderator" || value === "user") {
+    return value;
+  }
+  return "anonymous";
+};
+
+const resolveAccessForUser = (user: UserRecord | null) => {
+  const baseRole = normalizeRole(user?.role);
+  const role =
+    user && user.userId && user.userId.startsWith("guest-") ? "anonymous" : baseRole;
+  const canModerateNotes = role === "admin" || role === "moderator";
+  const canViewPrivateComments = canModerateNotes;
+  return {
+    role,
+    canModerateNotes,
+    canViewPrivateComments,
+    isAdmin: role === "admin",
+    isModerator: role === "moderator",
+  };
+};
 
 const slugify = (value: string) =>
   value
@@ -180,6 +202,7 @@ const createDefaultUser = (userId: string): UserRecord => {
     notes: [],
     notifications: [],
     pushSubscriptions: [],
+    role: "anonymous",
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -237,6 +260,7 @@ const parseUserFile = (contents: string, userId: string): UserRecord => {
           .map((subscription) => normalizePushSubscription(subscription))
           .filter((subscription): subscription is PushSubscriptionRecord => subscription !== null)
       : fallback.pushSubscriptions,
+    role: normalizeRole((parsed as { role?: unknown }).role),
     createdAt: parsed.createdAt ?? fallback.createdAt,
     updatedAt: parsed.updatedAt ?? fallback.updatedAt,
   };
@@ -493,6 +517,7 @@ export const saveUser = async (user: UserRecord): Promise<void> => {
       .map((notification) => normalizeStoredNotification(notification))
       .slice(0, MAX_NOTIFICATIONS),
     pushSubscriptions: dedupePushSubscriptions(user.pushSubscriptions ?? []),
+    role: normalizeRole(user.role),
     updatedAt: new Date().toISOString(),
   };
 
@@ -678,6 +703,108 @@ export const applyReactionToNote = async ({
   }
 
   return updatedNote;
+};
+
+export const updateNoteForUser = async ({
+  authorId,
+  noteId,
+  editorId,
+  title,
+  content,
+}: {
+  authorId: string;
+  noteId: string;
+  editorId: string;
+  title?: string | null;
+  content?: string | null;
+}): Promise<StoredNote> => {
+  const [author, editor] = await Promise.all([
+    getOrCreateUser(authorId),
+    getOrCreateUser(editorId),
+  ]);
+
+  const editorAccess = resolveAccessForUser(editor);
+  const isAuthor = editor.userId === authorId;
+  if (!isAuthor && !editorAccess.canModerateNotes) {
+    throw new Error("You do not have permission to update this note.");
+  }
+
+  const noteIndex = author.notes.findIndex((candidate) => candidate.id === noteId);
+  if (noteIndex === -1) {
+    throw new Error("Note not found.");
+  }
+
+  const existingNote = author.notes[noteIndex];
+
+  let nextTitle = existingNote.title;
+  if (typeof title === "string") {
+    const trimmed = title.trim();
+    nextTitle = trimmed.length > 0 ? trimmed : "Untitled Note";
+  }
+
+  let nextContent = existingNote.content;
+  if (content !== undefined) {
+    const trimmed = (content ?? "").trim();
+    if (!trimmed) {
+      throw new Error("Note content is required.");
+    }
+    nextContent = trimmed;
+  }
+
+  const timestamp = new Date().toISOString();
+  const updatedNote: StoredNote = {
+    ...existingNote,
+    title: nextTitle,
+    content: nextContent,
+    updatedAt: timestamp,
+  };
+
+  const updatedNotes = [...author.notes];
+  updatedNotes[noteIndex] = updatedNote;
+
+  const updatedAuthor: UserRecord = {
+    ...author,
+    notes: updatedNotes,
+  };
+
+  await saveUser(updatedAuthor);
+
+  return normalizeStoredNote(updatedNote, authorId);
+};
+
+export const deleteNoteForUser = async ({
+  authorId,
+  noteId,
+  actorId,
+}: {
+  authorId: string;
+  noteId: string;
+  actorId: string;
+}): Promise<void> => {
+  const [author, actor] = await Promise.all([
+    getOrCreateUser(authorId),
+    getOrCreateUser(actorId),
+  ]);
+
+  const actorAccess = resolveAccessForUser(actor);
+  const isAuthor = actor.userId === authorId;
+  if (!isAuthor && !actorAccess.canModerateNotes) {
+    throw new Error("You do not have permission to delete this note.");
+  }
+
+  const existingNote = author.notes.find((candidate) => candidate.id === noteId);
+  if (!existingNote) {
+    throw new Error("Note not found.");
+  }
+
+  const remainingNotes = author.notes.filter((candidate) => candidate.id !== noteId);
+
+  const updatedAuthor: UserRecord = {
+    ...author,
+    notes: remainingNotes,
+  };
+
+  await saveUser(updatedAuthor);
 };
 
 export const addCommentToNote = async ({
@@ -892,11 +1019,14 @@ export const updateCommentOnNote = async ({
   }
 
   const existingComment = existingNote.comments[commentIndex];
+  const editor = await getOrCreateUser(editorId);
+  const editorAccess = resolveAccessForUser(editor);
 
   const canEdit =
     editorId === existingComment.authorId ||
     editorId === authorId ||
-    (existingComment.isPrivate && existingComment.participants.includes(editorId));
+    (existingComment.isPrivate && existingComment.participants.includes(editorId)) ||
+    editorAccess.canModerateNotes;
 
   if (!canEdit) {
     throw new Error("You do not have permission to update this comment.");
@@ -957,7 +1087,12 @@ export const deleteCommentFromNote = async ({
   }
 
   const existingComment = existingNote.comments[commentIndex];
-  const canDelete = actorId === existingComment.authorId || actorId === authorId;
+  const actor = await getOrCreateUser(actorId);
+  const actorAccess = resolveAccessForUser(actor);
+  const canDelete =
+    actorId === existingComment.authorId ||
+    actorId === authorId ||
+    actorAccess.canModerateNotes;
 
   if (!canDelete) {
     throw new Error("You do not have permission to delete this comment.");
@@ -1156,10 +1291,14 @@ const mapCommentsForViewer = (
   comments: StoredNoteComment[],
   viewerId: string | null,
   noteAuthorId: string,
+  access: { canViewPrivateComments: boolean; canModerateNotes: boolean },
 ): NoteComment[] =>
   [...comments]
     .filter((comment) => {
       if (!comment.isPrivate) {
+        return true;
+      }
+      if (access.canViewPrivateComments) {
         return true;
       }
       if (!viewerId) {
@@ -1169,15 +1308,18 @@ const mapCommentsForViewer = (
     })
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .map<NoteComment>((comment) => {
+      const participantVisible = viewerId
+        ? comment.participants.includes(viewerId)
+        : false;
       const isVisible =
-        !comment.isPrivate ||
-        (viewerId ? comment.participants.includes(viewerId) : false);
+        !comment.isPrivate || access.canViewPrivateComments || participantVisible;
 
       const isEditable = Boolean(
         viewerId &&
           (viewerId === comment.authorId ||
             viewerId === noteAuthorId ||
-            (comment.isPrivate && comment.participants.includes(viewerId))),
+            (comment.isPrivate && participantVisible) ||
+            access.canModerateNotes),
       );
 
       return {
@@ -1206,6 +1348,7 @@ export const getAggregatedNotesForUser = async (
   }
 
   const viewerFollowing = new Set(viewer?.following ?? []);
+  const viewerAccess = resolveAccessForUser(viewer);
 
   const aggregated: Note[] = [];
 
@@ -1224,6 +1367,7 @@ export const getAggregatedNotesForUser = async (
         note.comments,
         viewer?.userId ?? null,
         user.userId,
+        viewerAccess,
       );
 
       aggregated.push({
@@ -1242,6 +1386,8 @@ export const getAggregatedNotesForUser = async (
         comments,
         publicCommentCount,
         commentsLocked: note.commentsLocked ?? false,
+        viewerCanModerate: viewerAccess.canModerateNotes,
+        viewerRole: viewerAccess.role,
       });
     }
   }

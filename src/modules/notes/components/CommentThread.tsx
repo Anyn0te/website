@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { NoteComment } from "../types";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 
@@ -35,6 +35,8 @@ interface CommentThreadProps {
 interface ThreadNode {
   comment: NoteComment;
   safeContent: string;
+  encryptedSafeContent: string;
+  placeholderContent: string;
   children: ThreadNode[];
 }
 
@@ -66,6 +68,9 @@ const CommentThread = ({
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const [revealedCommentIds, setRevealedCommentIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const viewerIsOwner = viewerId === noteAuthorId;
   const canComment = !noteCommentsLocked;
@@ -75,13 +80,15 @@ const CommentThread = ({
     const rootNodes: ThreadNode[] = [];
 
     for (const comment of comments) {
+      const sanitizedContent = sanitizeHtml(comment.content ?? "");
+      const placeholderContent = sanitizeHtml(
+        "Encrypted inbox message between participants.",
+      );
       map.set(comment.id, {
         comment,
-        safeContent: sanitizeHtml(
-          comment.isVisibleToViewer
-            ? comment.content ?? ""
-            : "Encrypted inbox message between participants.",
-        ),
+        safeContent: sanitizedContent,
+        encryptedSafeContent: sanitizedContent,
+        placeholderContent,
         children: [],
       });
     }
@@ -107,6 +114,21 @@ const CommentThread = ({
 
     return { roots: rootNodes, lookup: map };
   }, [comments]);
+
+  useEffect(() => {
+    setRevealedCommentIds(new Set());
+  }, [comments]);
+
+  const revealComment = (commentId: string) => {
+    setRevealedCommentIds((previous) => {
+      if (previous.has(commentId)) {
+        return previous;
+      }
+      const next = new Set(previous);
+      next.add(commentId);
+      return next;
+    });
+  };
 
   const handleContentChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     setContent(event.target.value);
@@ -377,7 +399,7 @@ const CommentThread = ({
   );
 
   const renderComment = (node: ThreadNode, depth: number) => {
-    const { comment, safeContent } = node;
+    const { comment, safeContent, encryptedSafeContent, placeholderContent } = node;
     const isEditing = comment.id === editingId;
     const editPending = isEditPending?.(comment.id) ?? false;
     const deletePending = isDeletePending?.(comment.id) ?? false;
@@ -390,6 +412,14 @@ const CommentThread = ({
     const canEditAction =
       (comment.isEditableByViewer || comment.authorId === viewerId || viewerIsOwner) && !isEditing;
     const canDeleteAction = viewerIsOwner || comment.authorId === viewerId;
+    const isEncryptedViewable = comment.isPrivate && comment.isVisibleToViewer;
+    const isRevealed =
+      !isEncryptedViewable || revealedCommentIds.has(comment.id);
+    const contentMarkup = isEncryptedViewable
+      ? isRevealed
+        ? encryptedSafeContent
+        : placeholderContent
+      : safeContent;
 
     return (
       <li key={comment.id} className="relative space-y-2">
@@ -419,7 +449,7 @@ const CommentThread = ({
                   Inbox
                 </span>
               )}
-              {!comment.isVisibleToViewer && (
+              {isEncryptedViewable && (
                 <span className="rounded-full bg-[color:var(--color-button-muted-bg)] px-2 py-0.5 text-[0.65rem] font-semibold text-[color:var(--color-text-muted)]">
                   Encrypted
                 </span>
@@ -467,15 +497,27 @@ const CommentThread = ({
           ) : (
             <p
               className={`mt-2 text-sm ${
-                comment.isVisibleToViewer
-                  ? "text-[color:var(--color-text-body)]"
-                  : "italic text-[color:var(--color-text-muted)]"
+                isEncryptedViewable && !isRevealed
+                  ? "italic text-[color:var(--color-text-muted)]"
+                  : comment.isVisibleToViewer
+                    ? "text-[color:var(--color-text-body)]"
+                    : "italic text-[color:var(--color-text-muted)]"
               }`}
-              dangerouslySetInnerHTML={{ __html: safeContent }}
+              dangerouslySetInnerHTML={{ __html: contentMarkup }}
             />
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
+            {isEncryptedViewable && !isRevealed && (
+              <button
+                type="button"
+                onClick={() => revealComment(comment.id)}
+                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-text-accent)] px-3 py-1 text-xs font-semibold text-[color:var(--color-text-accent)] hover:border-[color:var(--color-text-primary)] hover:text-[color:var(--color-text-primary)]"
+              >
+                <span aria-hidden="true">🔓</span>
+                <span>Unlock</span>
+              </button>
+            )}
             {canEditAction && (
               <button
                 type="button"

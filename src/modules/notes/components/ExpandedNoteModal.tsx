@@ -9,6 +9,11 @@ import CommentThread, {
   CommentUpdatePayload,
 } from "./CommentThread";
 
+export interface NoteUpdatePayload {
+  title: string;
+  content: string;
+}
+
 const formatDateTime = (value: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -33,11 +38,16 @@ interface ExpandedNoteModalProps {
   onToggleCommentsLock?: (locked: boolean) => Promise<void> | void;
   viewerId?: string | null;
   viewerDisplayName?: string | null;
+  viewerGlobalCanModerate?: boolean;
   commentsLockPending?: boolean;
   onEditComment?: (commentId: string, payload: CommentUpdatePayload) => Promise<void> | void;
   onDeleteComment?: (commentId: string) => Promise<void> | void;
   isCommentEditPending?: (commentId: string) => boolean;
   isCommentDeletePending?: (commentId: string) => boolean;
+  onUpdateNote?: (payload: NoteUpdatePayload) => Promise<void> | void;
+  onDeleteNote?: () => Promise<void> | void;
+  noteUpdatePending?: boolean;
+  noteDeletePending?: boolean;
 }
 
 const EXIT_DURATION_MS = 220;
@@ -54,11 +64,16 @@ const ExpandedNoteModal = ({
   onToggleCommentsLock,
   viewerId,
   viewerDisplayName,
+  viewerGlobalCanModerate = false,
   commentsLockPending = false,
   onEditComment,
   onDeleteComment,
   isCommentEditPending,
   isCommentDeletePending,
+  onUpdateNote,
+  onDeleteNote,
+  noteUpdatePending = false,
+  noteDeletePending = false,
 }: ExpandedNoteModalProps) => {
   const [activeNote, setActiveNote] = useState<Note | null>(note);
   const [isRendered, setIsRendered] = useState(Boolean(note));
@@ -66,6 +81,10 @@ const ExpandedNoteModal = ({
     note ? "open" : "closed",
   );
   const [isFollowBusy, setIsFollowBusy] = useState(false);
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [noteActionError, setNoteActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (note) {
@@ -96,6 +115,20 @@ const ExpandedNoteModal = ({
     setTransitionState("closed");
     return;
   }, [note, isRendered]);
+
+  useEffect(() => {
+    if (note) {
+      setEditTitle(note.title);
+      setEditContent(note.content);
+      setIsEditingNote(false);
+      setNoteActionError(null);
+    } else {
+      setEditTitle("");
+      setEditContent("");
+      setIsEditingNote(false);
+      setNoteActionError(null);
+    }
+  }, [note]);
 
   useEffect(() => {
     if (!activeNote) {
@@ -140,6 +173,10 @@ const ExpandedNoteModal = ({
   const totalPublicComments = activeNote.publicCommentCount;
   const isLoved = activeNote.viewerReaction === "love";
   const isDisliked = activeNote.viewerReaction === "dislike";
+  const globalModeration = Boolean(viewerGlobalCanModerate);
+  const canManageNote = Boolean(
+    globalModeration || activeNote.viewerCanModerate || activeNote.isOwnNote,
+  );
 
   const handleFollowClick = async () => {
     if (!canFollowAuthor || !activeNote || !onToggleFollow) {
@@ -163,6 +200,72 @@ const ExpandedNoteModal = ({
 
     const nextReaction = activeNote.viewerReaction === reaction ? null : reaction;
     void onReact(nextReaction);
+  };
+
+  const handleBeginNoteEdit = () => {
+    if (!activeNote) {
+      return;
+    }
+    setEditTitle(activeNote.title);
+    setEditContent(activeNote.content);
+    setNoteActionError(null);
+    setIsEditingNote(true);
+  };
+
+  const handleCancelNoteEdit = () => {
+    setIsEditingNote(false);
+    setNoteActionError(null);
+  };
+
+  const handleSaveNoteEdit = async () => {
+    if (!onUpdateNote || !activeNote || noteUpdatePending) {
+      return;
+    }
+
+    const trimmedContent = editContent.trim();
+    if (!trimmedContent) {
+      setNoteActionError("Note content cannot be empty.");
+      return;
+    }
+
+    const trimmedTitle = editTitle.trim();
+
+    try {
+      setNoteActionError(null);
+      await onUpdateNote({
+        title: trimmedTitle,
+        content: trimmedContent,
+      });
+      setIsEditingNote(false);
+    } catch (error) {
+      setNoteActionError(
+        error instanceof Error ? error.message : "Unable to update note.",
+      );
+    }
+  };
+
+  const handleDeleteNoteClick = async () => {
+    if (!onDeleteNote || !activeNote || noteDeletePending) {
+      return;
+    }
+
+    const confirmed =
+      typeof window === "undefined"
+        ? true
+        : window.confirm("Delete this note? This action cannot be undone.");
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setNoteActionError(null);
+      await onDeleteNote();
+    } catch (error) {
+      setNoteActionError(
+        error instanceof Error ? error.message : "Unable to delete note.",
+      );
+    }
   };
 
   return (
@@ -226,6 +329,39 @@ const ExpandedNoteModal = ({
               </button>
             )}
           </div>
+          {canManageNote && !isEditingNote && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleBeginNoteEdit}
+                disabled={noteUpdatePending}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                  noteUpdatePending
+                    ? "cursor-not-allowed border-[color:var(--color-divider)] text-[color:var(--color-text-muted)]"
+                    : "border-[color:var(--color-panel-border)] text-[color:var(--color-text-accent)] hover:border-[color:var(--color-text-accent)] hover:text-[color:var(--color-text-primary)]"
+                }`}
+              >
+                <span aria-hidden="true">✏️</span>
+                <span>Edit note</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteNoteClick}
+                disabled={noteDeletePending}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                  noteDeletePending
+                    ? "cursor-not-allowed border-[color:var(--color-divider)] text-[color:var(--color-text-muted)]"
+                    : "border-[color:var(--color-panel-border)] text-red-500 hover:border-red-500 hover:text-red-600"
+                }`}
+              >
+                <span aria-hidden="true">🗑️</span>
+                <span>{noteDeletePending ? "Removing..." : "Delete"}</span>
+              </button>
+            </div>
+          )}
+          {canManageNote && !isEditingNote && noteActionError && (
+            <p className="mt-2 text-sm text-red-500">{noteActionError}</p>
+          )}
         </header>
 
         {activeNote.media.length > 0 && (
@@ -266,12 +402,72 @@ const ExpandedNoteModal = ({
           </div>
         )}
 
-        <div className="rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-5 text-[color:var(--color-text-primary)]">
-          <p
-            className="text-base leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: safeContent }}
-          />
-        </div>
+        {isEditingNote ? (
+          <form
+            className="space-y-4 rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-5 text-[color:var(--color-text-primary)]"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSaveNoteEdit();
+            }}
+          >
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--color-text-muted)]">
+                Title
+              </label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(event) => setEditTitle(event.target.value)}
+                disabled={noteUpdatePending}
+                className="w-full rounded-xl border border-[color:var(--color-divider)] bg-[color:var(--color-input-bg)] p-3 text-sm focus:border-[color:var(--color-text-accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                maxLength={120}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--color-text-muted)]">
+                Content
+              </label>
+              <textarea
+                value={editContent}
+                onChange={(event) => setEditContent(event.target.value)}
+                disabled={noteUpdatePending}
+                rows={8}
+                className="w-full rounded-xl border border-[color:var(--color-divider)] bg-[color:var(--color-input-bg)] p-3 text-sm leading-relaxed focus:border-[color:var(--color-text-accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              />
+            </div>
+            {noteActionError && (
+              <p className="text-sm text-red-500">{noteActionError}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCancelNoteEdit}
+                disabled={noteUpdatePending}
+                className="rounded-full border border-[color:var(--color-divider)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-text-muted)] hover:border-[color:var(--color-text-accent)] hover:text-[color:var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={noteUpdatePending}
+                className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                  noteUpdatePending
+                    ? "cursor-not-allowed bg-[color:var(--color-button-disabled-bg)] text-[color:var(--color-button-disabled-text)]"
+                    : "bg-[color:var(--color-accent)] text-[color:var(--color-on-accent)] hover:bg-[color:var(--color-accent-hover)]"
+                }`}
+              >
+                {noteUpdatePending ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-5 text-[color:var(--color-text-primary)]">
+            <p
+              className="text-base leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: safeContent }}
+            />
+          </div>
+        )}
 
         <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--color-text-muted)]">

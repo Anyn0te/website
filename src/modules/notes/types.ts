@@ -1,3 +1,5 @@
+import { UserRole } from "@/modules/users/types";
+
 export type NoteMediaType = "image" | "audio";
 export type NoteReactionType = "love" | "dislike";
 
@@ -69,4 +71,6 @@ export interface Note {
   comments: NoteComment[];
   publicCommentCount: number;
   commentsLocked: boolean;
+  viewerCanModerate: boolean;
+  viewerRole: UserRole;
 }

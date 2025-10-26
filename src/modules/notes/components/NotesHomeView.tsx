@@ -12,8 +12,10 @@ import CreateNoteModal from "./CreateNoteModal";
 import {
   addCommentToNote,
   deleteCommentFromNote,
+  deleteNote,
   reactToNote,
   setCommentsLocked,
+  updateNoteContent,
   updateCommentOnNote,
 } from "../services/noteService";
 import type { Note, NoteReactionType } from "../types";
@@ -57,6 +59,15 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   const [pendingDeleteCommentIds, setPendingDeleteCommentIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [noteManagementError, setNoteManagementError] = useState<string | null>(null);
+  const [pendingNoteUpdateKeys, setPendingNoteUpdateKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [pendingNoteDeleteKeys, setPendingNoteDeleteKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const viewerRole = profile?.role ?? "user";
+  const viewerCanModerateGlobally = viewerRole === "admin" || viewerRole === "moderator";
 
   const myNotes = useMemo(() => {
     if (!userId) {
@@ -104,7 +115,12 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         : "No notes yet. Be the first to share a thought.";
 
   const combinedError =
-    notesError ?? profileError ?? followError ?? reactionError ?? commentError;
+    notesError ??
+    profileError ??
+    followError ??
+    reactionError ??
+    commentError ??
+    noteManagementError;
   const isLoading = isNotesLoading || (token ? isProfileLoading : false);
 
   const handleFollowStatusChange = useCallback(
@@ -335,6 +351,102 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
     [resolveViewerId, token, reload],
   );
 
+  const handleUpdateNote = useCallback(
+    async (note: Note, payload: { title: string; content: string }) => {
+      const canModerate = viewerCanModerateGlobally || note.viewerCanModerate || note.isOwnNote;
+      if (!canModerate) {
+        const message = "You do not have permission to manage this note.";
+        setNoteManagementError(message);
+        throw new Error(message);
+      }
+      const viewerKey = resolveViewerId();
+      if (!viewerKey) {
+        const message = "Unable to update notes without an identifier.";
+        setNoteManagementError(message);
+        throw new Error(message);
+      }
+
+      const key = `${note.authorId}::${note.id}`;
+      setNoteManagementError(null);
+      setPendingNoteUpdateKeys((previous) => {
+        const next = new Set(previous);
+        next.add(key);
+        return next;
+      });
+
+      try {
+        await updateNoteContent({
+          noteId: note.id,
+          authorId: note.authorId,
+          title: payload.title,
+          content: payload.content,
+          token,
+          userId: viewerKey,
+        });
+        await reload();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to update note.";
+        setNoteManagementError(message);
+        throw new Error(message);
+      } finally {
+        setPendingNoteUpdateKeys((previous) => {
+          const next = new Set(previous);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [resolveViewerId, token, reload, viewerCanModerateGlobally],
+  );
+
+  const handleDeleteNote = useCallback(
+    async (note: Note) => {
+      const canModerate = viewerCanModerateGlobally || note.viewerCanModerate || note.isOwnNote;
+      if (!canModerate) {
+        const message = "You do not have permission to manage this note.";
+        setNoteManagementError(message);
+        throw new Error(message);
+      }
+      const viewerKey = resolveViewerId();
+      if (!viewerKey) {
+        const message = "Unable to delete notes without an identifier.";
+        setNoteManagementError(message);
+        throw new Error(message);
+      }
+
+      const key = `${note.authorId}::${note.id}`;
+      setNoteManagementError(null);
+      setPendingNoteDeleteKeys((previous) => {
+        const next = new Set(previous);
+        next.add(key);
+        return next;
+      });
+
+      try {
+        await deleteNote({
+          noteId: note.id,
+          authorId: note.authorId,
+          token,
+          userId: viewerKey,
+        });
+        await reload();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to delete note.";
+        setNoteManagementError(message);
+        throw new Error(message);
+      } finally {
+        setPendingNoteDeleteKeys((previous) => {
+          const next = new Set(previous);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [resolveViewerId, token, reload, viewerCanModerateGlobally],
+  );
+
   const handleOpenCreateModal = () => {
     setIsCreateModalOpen(true);
   };
@@ -347,6 +459,16 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   const isCommentDeletePending = useCallback(
     (_note: Note, commentId: string) => pendingDeleteCommentIds.has(commentId),
     [pendingDeleteCommentIds],
+  );
+
+  const isNoteUpdatePending = useCallback(
+    (note: Note) => pendingNoteUpdateKeys.has(`${note.authorId}::${note.id}`),
+    [pendingNoteUpdateKeys],
+  );
+
+  const isNoteDeletePending = useCallback(
+    (note: Note) => pendingNoteDeleteKeys.has(`${note.authorId}::${note.id}`),
+    [pendingNoteDeleteKeys],
   );
 
   return (
@@ -407,10 +529,15 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
                 ? `@${profile.username}`
                 : null
             }
+            viewerCanModerateGlobally={viewerCanModerateGlobally}
             onEditComment={handleEditComment}
             onDeleteComment={handleDeleteComment}
             isCommentEditPending={isCommentEditPending}
             isCommentDeletePending={isCommentDeletePending}
+            onUpdateNote={handleUpdateNote}
+            onDeleteNote={handleDeleteNote}
+            isNoteUpdatePending={isNoteUpdatePending}
+            isNoteDeletePending={isNoteDeletePending}
           />
         )}
       </main>

@@ -240,3 +240,73 @@ export const setCommentsLocked = async ({
     throw new Error(payload.error ?? "Unable to update comment settings.");
   }
 };
+
+export interface UpdateNotePayload {
+  noteId: string;
+  authorId: string;
+  title: string;
+  content: string;
+  token?: string | null;
+  userId: string;
+}
+
+export const updateNoteContent = async ({
+  noteId,
+  authorId,
+  title,
+  content,
+  token,
+  userId,
+}: UpdateNotePayload): Promise<void> => {
+  const response = await fetch("/api/notes", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      noteId,
+      authorId,
+      title,
+      content,
+      userId,
+    }),
+  });
+
+  const payload = (await response.json()) as { error?: string };
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Unable to update note.");
+  }
+};
+
+export interface DeleteNotePayload {
+  noteId: string;
+  authorId: string;
+  token?: string | null;
+  userId: string;
+}
+
+export const deleteNote = async ({
+  noteId,
+  authorId,
+  token,
+  userId,
+}: DeleteNotePayload): Promise<void> => {
+  const response = await fetch("/api/notes", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      noteId,
+      authorId,
+      userId,
+    }),
+  });
+
+  const payload = (await response.json()) as { error?: string };
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Unable to delete note.");
+  }
+};

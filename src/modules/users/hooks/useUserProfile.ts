@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/modules/auth/AuthContext";
-import { ThemePreference } from "../types";
+import { ThemePreference, UserRole } from "../types";
 import {
   clearGuestIdentity,
   ensureGuestIdentity,
@@ -18,6 +18,7 @@ export interface UserProfile {
   themePreference: ThemePreference;
   following: string[];
   followers: string[];
+  role: UserRole;
 }
 
 interface UseUserProfileResult {
@@ -119,10 +120,19 @@ export const useUserProfile = (): UseUserProfileResult => {
         throw new Error("Unable to load user settings.");
       }
 
-      const payload = (await response.json()) as { user?: UserProfile };
+      const payload = (await response.json()) as { user?: Partial<UserProfile> };
       if (payload.user) {
-        setProfile(payload.user);
-        applyThemePreference(payload.user.themePreference);
+        const normalized: UserProfile = {
+          userId: payload.user.userId ?? user?.uid ?? "",
+          username: payload.user.username ?? null,
+          displayUsername: Boolean(payload.user.displayUsername && payload.user.username),
+          themePreference: payload.user.themePreference ?? "system",
+          following: payload.user.following ?? [],
+          followers: payload.user.followers ?? [],
+          role: payload.user.role ?? "anonymous",
+        };
+        setProfile(normalized);
+        applyThemePreference(normalized.themePreference);
         if (typeof window !== "undefined") {
           window.localStorage.removeItem(GUEST_THEME_STORAGE_KEY);
         }
@@ -136,7 +146,7 @@ export const useUserProfile = (): UseUserProfileResult => {
     } finally {
       setProfileLoading(false);
     }
-  }, [token, resetThemeToSystem]);
+  }, [token, resetThemeToSystem, user?.uid]);
 
   useEffect(() => {
     if (authLoading) {
@@ -219,7 +229,7 @@ export const useUserProfile = (): UseUserProfileResult => {
         });
 
         const payload = (await response.json()) as {
-          user?: UserProfile;
+          user?: Partial<UserProfile>;
           error?: string;
         };
 
@@ -228,8 +238,17 @@ export const useUserProfile = (): UseUserProfileResult => {
         }
 
         if (payload.user) {
-          setProfile(payload.user);
-          applyThemePreference(payload.user.themePreference);
+          const normalized: UserProfile = {
+            userId: payload.user.userId ?? user?.uid ?? "",
+            username: payload.user.username ?? null,
+            displayUsername: Boolean(payload.user.displayUsername && payload.user.username),
+            themePreference: payload.user.themePreference ?? "system",
+            following: payload.user.following ?? [],
+            followers: payload.user.followers ?? [],
+            role: payload.user.role ?? profile?.role ?? "anonymous",
+          };
+          setProfile(normalized);
+          applyThemePreference(normalized.themePreference);
         }
       } catch (updateError) {
         const normalizedError =
@@ -242,7 +261,7 @@ export const useUserProfile = (): UseUserProfileResult => {
         setProfileLoading(false);
       }
     },
-    [token, user?.uid]
+    [token, user?.uid, profile?.role]
   );
 
   const setThemePreference = useCallback(async (newTheme: ThemePreference) => {
@@ -280,6 +299,7 @@ export const useUserProfile = (): UseUserProfileResult => {
     themePreference: guestTheme,
     followers: [],
     following: [],
+    role: "anonymous",
   }), [resolvedUserId, guestTheme]);
 
   const activeProfile = token ? profile : (resolvedUserId ? guestProfile : null); 

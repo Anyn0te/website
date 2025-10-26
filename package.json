@@ -8,7 +8,8 @@
     "start": "pm2 start ecosystem.config.cjs --only anyn0te-web --env production --update-env",
     "start:standalone": "node scripts/run-next.js start",
     "lint": "next lint",
-    "pm2:stop": "pm2 stop anyn0te-web && pm2 delete anyn0te-web"
+    "pm2:stop": "pm2 stop anyn0te-web && pm2 delete anyn0te-web",
+    "permission": "node scripts/managePermissions.mjs"
   },
   "dependencies": {
     "dompurify": "^3.3.0",
