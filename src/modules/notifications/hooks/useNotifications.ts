@@ -58,7 +58,7 @@ export const useNotifications = (
   token?: string | null,
   options?: UseNotificationsOptions,
 ): UseNotificationsResult => {
-  const { pollIntervalMs = 15000, onNewNotifications } = options ?? {};
+  const { pollIntervalMs = 0, onNewNotifications } = options ?? {};
   const [mutationError, setMutationError] = useState<string | null>(null);
   const previousIdsRef = useRef<Set<string>>(new Set());
   const hasFetchedOnceRef = useRef(false);
@@ -68,6 +68,11 @@ export const useNotifications = (
     () => (shouldFetch ? ["notifications", viewerId!, token ?? ""] : null),
     [shouldFetch, viewerId, token],
   );
+
+  const refreshInterval =
+    typeof pollIntervalMs === "number" && pollIntervalMs > 0 ? pollIntervalMs : 0;
+  const dedupeInterval =
+    typeof pollIntervalMs === "number" && pollIntervalMs > 0 ? pollIntervalMs : undefined;
 
   const {
     data,
@@ -79,11 +84,13 @@ export const useNotifications = (
     swrKey,
     fetchNotifications,
     {
-      refreshInterval: 0,
+      refreshInterval,
+      refreshWhenHidden: refreshInterval > 0,
+      refreshWhenOffline: false,
       keepPreviousData: true,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      dedupingInterval: pollIntervalMs,
+      dedupingInterval: dedupeInterval,
     },
   );
 

@@ -31,10 +31,15 @@ const SettingsView = () => {
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const handleOpenCreateModal = () => {
     setIsCreateModalOpen(true);
   };
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -174,20 +179,19 @@ const SettingsView = () => {
       </header>
 
       <main className="mx-auto max-w-2xl space-y-6">
-        {(isLoading && !profile) && (
-          <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 text-center text-[color:var(--color-text-muted)] shadow-[0_8px_20px_var(--color-glow)] animate-fade-up">
-            Loading your preferences...
-          </section>
-        )}
-
-        {error && !isLoading && (
+        {isHydrated && error && !isLoading && (
           <section className="rounded-2xl border border-red-200/70 bg-red-100 p-6 text-center text-red-900 shadow-md animate-fade-up">
             {error}
           </section>
         )}
 
         <section className="rounded-2xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] p-6 shadow-[0_12px_26px_var(--color-glow)] transition-colors animate-fade-up">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          {!isHydrated || (isLoading && !profile) ? (
+            <div className="text-center text-sm text-[color:var(--color-text-muted)]">
+              Loading your preferences...
+            </div>
+          ) : (
+            <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
                 htmlFor="username"
@@ -283,7 +287,8 @@ const SettingsView = () => {
                 {isSaving ? "Saving..." : "Save Settings"}
               </button>
             </div>
-          </form>
+            </form>
+          )}
         </section>
       </main>
 

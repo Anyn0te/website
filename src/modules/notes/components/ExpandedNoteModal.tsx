@@ -280,31 +280,33 @@ const ExpandedNoteModal = ({
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
                 isLoved
-                  ? "border-transparent bg-rose-500 text-white shadow-sm"
+                  ? "border-transparent bg-rose-500 text-white shadow-lg ring-2 ring-rose-300"
                   : "border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] text-[color:var(--color-text-primary)] hover:border-[color:var(--color-text-accent)] hover:text-[color:var(--color-text-accent)]"
               } ${reactionActionPending ? "cursor-wait opacity-70" : ""}`}
               onClick={() => handleReactionClick("love")}
               disabled={reactionActionPending}
               aria-label={isLoved ? "Remove love reaction" : "React with love"}
+              aria-pressed={isLoved}
             >
-              <span>❤️</span>
-              <span>{activeNote.reactions.love}</span>
+              <span aria-hidden="true">❤️</span>
+              <span className={isLoved ? "font-bold" : ""}>{activeNote.reactions.love}</span>
             </button>
             <button
               type="button"
-              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
                 isDisliked
-                  ? "border-transparent bg-slate-700 text-white shadow-sm"
+                  ? "border-transparent bg-slate-800 text-white shadow-lg ring-2 ring-slate-500/80"
                   : "border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] text-[color:var(--color-text-primary)] hover:border-[color:var(--color-text-accent)] hover:text-[color:var(--color-text-accent)]"
               } ${reactionActionPending ? "cursor-wait opacity-70" : ""}`}
               onClick={() => handleReactionClick("dislike")}
               disabled={reactionActionPending}
               aria-label={isDisliked ? "Remove dislike reaction" : "React with dislike"}
+              aria-pressed={isDisliked}
             >
-              <span>👎</span>
-              <span>{activeNote.reactions.dislike}</span>
+              <span aria-hidden="true">👎</span>
+              <span className={isDisliked ? "font-bold" : ""}>{activeNote.reactions.dislike}</span>
             </button>
           </div>
         </div>

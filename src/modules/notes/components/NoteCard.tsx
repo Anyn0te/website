@@ -131,31 +131,33 @@ const NoteCard = ({
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
-          className={`flex flex-1 items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
+          className={`flex flex-1 items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition-all ${
             isLoved
-              ? "border-transparent bg-rose-500 text-white shadow-sm"
+              ? "border-transparent bg-rose-500 text-white shadow-lg ring-2 ring-rose-300"
               : "border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] text-[color:var(--color-text-primary)] hover:border-[color:var(--color-text-accent)] hover:text-[color:var(--color-text-accent)]"
           } ${isReacting ? "cursor-wait opacity-70" : ""}`}
           onClick={(event) => handleReactionClick(event, "love")}
           disabled={isReacting}
           aria-label={isLoved ? "Remove love reaction" : "React with love"}
+          aria-pressed={isLoved}
         >
-          <span>❤️</span>
-          <span>{note.reactions.love}</span>
+          <span aria-hidden="true">❤️</span>
+          <span className={isLoved ? "font-bold" : ""}>{note.reactions.love}</span>
         </button>
         <button
           type="button"
-          className={`flex flex-1 items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
+          className={`flex flex-1 items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition-all ${
             isDisliked
-              ? "border-transparent bg-slate-700 text-white shadow-sm"
+              ? "border-transparent bg-slate-800 text-white shadow-lg ring-2 ring-slate-500/80"
               : "border-[color:var(--color-panel-border)] bg-[color:var(--color-button-muted-bg)] text-[color:var(--color-text-primary)] hover:border-[color:var(--color-text-accent)] hover:text-[color:var(--color-text-accent)]"
           } ${isReacting ? "cursor-wait opacity-70" : ""}`}
           onClick={(event) => handleReactionClick(event, "dislike")}
           disabled={isReacting}
           aria-label={isDisliked ? "Remove dislike reaction" : "React with dislike"}
+          aria-pressed={isDisliked}
         >
-          <span>👎</span>
-          <span>{note.reactions.dislike}</span>
+          <span aria-hidden="true">👎</span>
+          <span className={isDisliked ? "font-bold" : ""}>{note.reactions.dislike}</span>
         </button>
       </div>
     </div>

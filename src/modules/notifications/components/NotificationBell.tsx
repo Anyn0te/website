@@ -6,6 +6,7 @@ import { Notification as AppNotification } from "@/modules/notifications/types";
 import {
   ensurePushSubscription,
   removePushSubscription,
+  ensurePushServiceWorker,
 } from "@/modules/notifications/utils/registerPush";
 
 type AnchorVariant = "mobile" | "desktop";
@@ -25,6 +26,7 @@ interface NotificationBellProps {
   nativePermission?: NotificationPermission;
   onRequestNativePermission?: () => Promise<void>;
   authToken?: string | null;
+  onSubscriptionStateChange?: (isActive: boolean) => void;
 }
 
 const formatMessage = (notification: AppNotification): string => {
@@ -71,6 +73,7 @@ export const NotificationBell = ({
   onRequestNativePermission,
   anchor = "desktop",
   authToken = null,
+  onSubscriptionStateChange,
 }: NotificationBellProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [renderPanel, setRenderPanel] = useState(false);
@@ -126,6 +129,12 @@ export const NotificationBell = ({
   }, [isOpen, renderPanel]);
 
   useEffect(() => {
+    if (nativeSupport) {
+      void ensurePushServiceWorker();
+    }
+  }, [nativeSupport]);
+
+  useEffect(() => {
     if (!nativeSupport || !nativeReady) {
       return;
     }
@@ -155,6 +164,12 @@ export const NotificationBell = ({
       setHasPushSubscription(false);
     }
   }, [authToken, nativePermission, nativeReady, nativeSupport, hasPushSubscription]);
+
+  useEffect(() => {
+    if (typeof onSubscriptionStateChange === "function") {
+      onSubscriptionStateChange(hasPushSubscription);
+    }
+  }, [hasPushSubscription, onSubscriptionStateChange]);
 
   useEffect(() => {
     if (!isOpen) {

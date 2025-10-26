@@ -7,6 +7,7 @@ interface PushPublicConfig {
 
 let cachedConfig: PushPublicConfig | null = null;
 let configPromise: Promise<PushPublicConfig> | null = null;
+let swRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
 
 const fetchPushConfig = async (): Promise<PushPublicConfig> => {
   if (cachedConfig) {
@@ -40,20 +41,36 @@ const fetchPushConfig = async (): Promise<PushPublicConfig> => {
   return configPromise;
 };
 
-const registerServiceWorker = async () => {
-  if (!("serviceWorker" in navigator)) {
+export const ensurePushServiceWorker = async () => {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
     return null;
   }
 
-  try {
-    const registration = await navigator.serviceWorker.register("/push-sw.js", {
-      scope: "/",
-    });
-    return registration;
-  } catch (error) {
-    console.error("Service worker registration failed:", error);
-    return null;
+  if (swRegistrationPromise) {
+    return swRegistrationPromise;
   }
+
+  swRegistrationPromise = (async () => {
+    try {
+      const existing = await navigator.serviceWorker.getRegistration("/push-sw.js");
+      if (existing) {
+        return existing;
+      }
+      return await navigator.serviceWorker.register("/push-sw.js", {
+        scope: "/",
+      });
+    } catch (error) {
+      console.error("Service worker registration failed:", error);
+      return null;
+    }
+  })();
+
+  const registration = await swRegistrationPromise;
+  if (!registration) {
+    swRegistrationPromise = null;
+  }
+
+  return registration;
 };
 
 export const ensurePushSubscription = async (authToken?: string | null) => {
@@ -81,8 +98,7 @@ export const ensurePushSubscription = async (authToken?: string | null) => {
     return false;
   }
 
-  const registration = (await navigator.serviceWorker.getRegistration("/push-sw.js")) ?? (await registerServiceWorker());
-
+  const registration = await ensurePushServiceWorker();
   if (!registration) {
     return false;
   }
@@ -125,7 +141,11 @@ export const removePushSubscription = async (authToken?: string | null) => {
     return false;
   }
 
-  const registration = await navigator.serviceWorker.getRegistration("/push-sw.js");
+  if (!("serviceWorker" in navigator)) {
+    return false;
+  }
+
+  const registration = await ensurePushServiceWorker();
   if (!registration) {
     return false;
   }

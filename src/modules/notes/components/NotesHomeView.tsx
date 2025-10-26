@@ -7,6 +7,7 @@ import { useUserProfile } from "@/modules/users/hooks/useUserProfile";
 import { updateFollowStatus } from "@/modules/users/services/followService";
 import { useAuth } from "@/modules/auth/AuthContext";
 import NoteSection from "./NoteSection";
+import { ensureGuestIdentity } from "@/modules/users/utils/guestIdentity";
 import CreateNoteModal from "./CreateNoteModal";
 import {
   addCommentToNote,
@@ -137,13 +138,13 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
 
   const followHandler = userId ? handleFollowStatusChange : undefined;
 
+  const resolveViewerId = useCallback(() => {
+    return userId ?? ensureGuestIdentity();
+  }, [userId]);
+
   const handleReactionChange = useCallback(
     async (note: Note, desiredReaction: NoteReactionType | null) => {
-      if (!userId) {
-        setReactionError("Unable to react because the viewer is not identified yet.");
-        return;
-      }
-
+      const viewerKey = resolveViewerId();
       const key = `${note.authorId}::${note.id}`;
       setReactionError(null);
       setPendingReactionKeys((previous) => {
@@ -158,7 +159,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
           authorId: note.authorId,
           reaction: desiredReaction,
           token,
-          userId,
+          userId: viewerKey,
         });
         await reload();
       } catch (error) {
@@ -173,7 +174,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         });
       }
     },
-    [userId, token, reload],
+    [resolveViewerId, token, reload],
   );
 
   const handleSubmitComment = useCallback(
@@ -186,12 +187,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         replyToCommentId?: string | null;
       },
     ) => {
-      if (!userId) {
-        const message = "Unable to comment because the viewer is not identified yet.";
-        setCommentError(message);
-        throw new Error(message);
-      }
-
+      const viewerKey = resolveViewerId();
       const key = `${note.authorId}::${note.id}`;
       const commenterName =
         profile?.displayUsername && profile.username ? profile.username : null;
@@ -212,7 +208,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
           participantUserId: payload.participantUserId,
           replyToCommentId: payload.replyToCommentId,
           token,
-          userId,
+          userId: viewerKey,
           commenterName,
         });
         await reload();
@@ -229,17 +225,12 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         });
       }
     },
-    [userId, token, reload, profile?.displayUsername, profile?.username],
+    [resolveViewerId, token, reload, profile?.displayUsername, profile?.username],
   );
 
   const handleToggleCommentsLock = useCallback(
     async (note: Note, locked: boolean) => {
-      if (!userId) {
-        const message = "Unable to update settings without an identifier.";
-        setCommentError(message);
-        throw new Error(message);
-      }
-
+      const viewerKey = resolveViewerId();
       const key = `${note.authorId}::${note.id}`;
       setCommentError(null);
       setPendingLockKeys((previous) => {
@@ -254,7 +245,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
           authorId: note.authorId,
           locked,
           token,
-          userId,
+          userId: viewerKey,
         });
         await reload();
       } catch (error) {
@@ -270,17 +261,12 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         });
       }
     },
-    [userId, token, reload],
+    [resolveViewerId, token, reload],
   );
 
   const handleEditComment = useCallback(
     async (note: Note, commentId: string, content: string) => {
-      if (!userId) {
-        const message = "Unable to update thoughts without an identifier.";
-        setCommentError(message);
-        throw new Error(message);
-      }
-
+      const viewerKey = resolveViewerId();
       setCommentError(null);
       setPendingEditCommentIds((previous) => {
         const next = new Set(previous);
@@ -295,7 +281,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
           commentId,
           content,
           token,
-          userId,
+          userId: viewerKey,
         });
         await reload();
       } catch (error) {
@@ -311,17 +297,12 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         });
       }
     },
-    [userId, token, reload],
+    [resolveViewerId, token, reload],
   );
 
   const handleDeleteComment = useCallback(
     async (note: Note, commentId: string) => {
-      if (!userId) {
-        const message = "Unable to delete thoughts without an identifier.";
-        setCommentError(message);
-        throw new Error(message);
-      }
-
+      const viewerKey = resolveViewerId();
       setCommentError(null);
       setPendingDeleteCommentIds((previous) => {
         const next = new Set(previous);
@@ -335,7 +316,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
           authorId: note.authorId,
           commentId,
           token,
-          userId,
+          userId: viewerKey,
         });
         await reload();
       } catch (error) {
@@ -351,7 +332,7 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
         });
       }
     },
-    [userId, token, reload],
+    [resolveViewerId, token, reload],
   );
 
   const handleOpenCreateModal = () => {

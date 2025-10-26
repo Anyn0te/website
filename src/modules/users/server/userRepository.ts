@@ -91,11 +91,11 @@ const normalizeStoredComment = (
   noteAuthorId: string,
 ): StoredNoteComment => {
   const normalizedParticipants = normalizeParticipants(comment.participants);
-  if (!normalizedParticipants.includes(noteAuthorId)) {
-    normalizedParticipants.push(noteAuthorId);
-  }
   if (!normalizedParticipants.includes(comment.authorId)) {
     normalizedParticipants.push(comment.authorId);
+  }
+  if (!comment.isPrivate && !normalizedParticipants.includes(noteAuthorId)) {
+    normalizedParticipants.push(noteAuthorId);
   }
 
   return {
@@ -717,17 +717,19 @@ export const addCommentToNote = async ({
   }
 
   const participants = new Set<string>();
-  participants.add(authorId);
   participants.add(commenterId);
 
   if (isPrivate) {
-    if (!participantUserId || typeof participantUserId !== "string") {
-      throw new Error("Private comments require a participant user id.");
+    if (!participantUserId || typeof participantUserId !== "string" || !participantUserId.trim()) {
+      throw new Error("Private thoughts need a recipient.");
     }
-    if (commenterId !== authorId && participantUserId !== authorId) {
-      throw new Error("Private inbox messages must involve the note owner.");
+    const normalizedTargetId = participantUserId.trim();
+    if (normalizedTargetId === commenterId) {
+      throw new Error("Private thoughts must include another participant.");
     }
-    participants.add(participantUserId);
+    participants.add(normalizedTargetId);
+  } else {
+    participants.add(authorId);
   }
 
   const timestamp = new Date().toISOString();
@@ -774,27 +776,34 @@ export const addCommentToNote = async ({
     : resolveDisplayName(actorRecord) ?? "Someone";
   const noteTitle = existingNote.title ?? "Untitled Note";
 
-  if (commenterId !== authorId) {
-    notificationTargets.set(authorId, { isPrivate, commentId: normalizedComment.id });
+  const recipients = new Set<string>();
+  if (isPrivate) {
+    for (const participantId of normalizedComment.participants) {
+      if (participantId !== commenterId) {
+        recipients.add(participantId);
+      }
+    }
+  } else if (commenterId !== authorId) {
+    recipients.add(authorId);
   }
 
   if (replyToCommentId) {
     const parentComment = existingNote.comments.find((comment) => comment.id === replyToCommentId);
     if (parentComment) {
       const parentAuthorId = parentComment.authorId;
-      const shouldNotifyParent =
-        parentAuthorId &&
-        parentAuthorId !== commenterId &&
-        parentAuthorId !== authorId &&
-        (!isPrivate || normalizedComment.participants.includes(parentAuthorId));
-
-      if (shouldNotifyParent) {
-        notificationTargets.set(parentAuthorId, {
-          isPrivate,
-          commentId: normalizedComment.id,
-        });
+      const canSeeReply =
+        !isPrivate || normalizedComment.participants.includes(parentAuthorId);
+      if (canSeeReply && parentAuthorId && parentAuthorId !== commenterId) {
+        recipients.add(parentAuthorId);
       }
     }
+  }
+
+  for (const targetId of recipients) {
+    notificationTargets.set(targetId, {
+      isPrivate,
+      commentId: normalizedComment.id,
+    });
   }
 
   await Promise.all(
@@ -1146,8 +1155,18 @@ const sortNotesByDateDesc = (notes: StoredNote[]) =>
 const mapCommentsForViewer = (
   comments: StoredNoteComment[],
   viewerId: string | null,
+  noteAuthorId: string,
 ): NoteComment[] =>
   [...comments]
+    .filter((comment) => {
+      if (!comment.isPrivate) {
+        return true;
+      }
+      if (!viewerId) {
+        return false;
+      }
+      return comment.participants.includes(viewerId);
+    })
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .map<NoteComment>((comment) => {
       const isVisible =
@@ -1156,7 +1175,9 @@ const mapCommentsForViewer = (
 
       const isEditable = Boolean(
         viewerId &&
-          (viewerId === comment.authorId || (comment.isPrivate && comment.participants.includes(viewerId))),
+          (viewerId === comment.authorId ||
+            viewerId === noteAuthorId ||
+            (comment.isPrivate && comment.participants.includes(viewerId))),
       );
 
       return {
@@ -1199,7 +1220,11 @@ export const getAggregatedNotesForUser = async (
         viewer?.userId ? note.reactionMap[viewer.userId] ?? null : null;
       const publicCommentCount = note.comments.filter((comment) => !comment.isPrivate)
         .length;
-      const comments = mapCommentsForViewer(note.comments, viewer?.userId ?? null);
+      const comments = mapCommentsForViewer(
+        note.comments,
+        viewer?.userId ?? null,
+        user.userId,
+      );
 
       aggregated.push({
         id: note.id,

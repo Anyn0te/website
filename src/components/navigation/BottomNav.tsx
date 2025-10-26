@@ -53,6 +53,7 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
   const [nativePermission, setNativePermission] =
     useState<NotificationPermission>("default");
   const [permissionReady, setPermissionReady] = useState(false);
+  const [hasRealtimeNotifications, setHasRealtimeNotifications] = useState(false);
 
   useEffect(() => {
     if (!supportsNativeNotifications) {
@@ -150,16 +151,21 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
     [supportsNativeNotifications, nativePermission, permissionReady],
   );
 
+  const notificationOptions = useMemo(
+    () => ({
+      pollIntervalMs: hasRealtimeNotifications ? 0 : 15000,
+      onNewNotifications: dispatchNativeNotifications,
+    }),
+    [hasRealtimeNotifications, dispatchNativeNotifications],
+  );
+
   const {
     notifications,
     unreadCount,
     isLoading: notificationsLoading,
     markAllAsRead,
     refresh,
-  } = useNotifications(viewerId, token, {
-    pollIntervalMs: 15000,
-    onNewNotifications: dispatchNativeNotifications,
-  });
+  } = useNotifications(viewerId, token, notificationOptions);
 
   const handleRequestNativePermission = useCallback(async () => {
     if (!supportsNativeNotifications) {
@@ -383,6 +389,7 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
               onRequestNativePermission={handleRequestNativePermission}
               authToken={token ?? null}
               anchor="desktop"
+              onSubscriptionStateChange={setHasRealtimeNotifications}
             />
         </div>
       </div>
@@ -405,6 +412,7 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
           onRequestNativePermission={handleRequestNativePermission}
           authToken={token ?? null}
           anchor="mobile"
+          onSubscriptionStateChange={setHasRealtimeNotifications}
         />
         <button
           aria-controls="primary-navigation"

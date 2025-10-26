@@ -140,12 +140,20 @@ const CommentThread = ({
   };
 
   const handleSelectMyThought = (comment: NoteComment) => {
-    const targetUserId = viewerIsOwner ? comment.authorId : noteAuthorId;
-    const label = viewerIsOwner
-      ? comment.authorName
-        ? `@${comment.authorName}`
-        : "Anonymous"
-      : "note owner";
+    const targetUserId = comment.authorId;
+    if (!targetUserId) {
+      setError("Unable to start an encrypted thought without a recipient.");
+      return;
+    }
+    if (targetUserId === viewerId) {
+      setError("Encrypted thoughts need a different recipient.");
+      return;
+    }
+    const label = comment.authorName
+      ? `@${comment.authorName}`
+      : comment.authorId === noteAuthorId
+        ? "note owner"
+        : "Anonymous";
 
     const isSame =
       selectedTarget?.commentId === comment.id &&
@@ -333,7 +341,7 @@ const CommentThread = ({
           {selectedTarget && (
             <span>
               {isPrivate
-                ? "Sharing an encrypted My Thought with the note owner."
+                ? `Sharing an encrypted thought with ${selectedTarget.label}.`
                 : `Replying to ${selectedTarget.label}.`}
             </span>
           )}
@@ -345,7 +353,7 @@ const CommentThread = ({
               disabled={createActionPending}
               className="h-4 w-4 rounded border-[color:var(--color-panel-border)]"
             />
-            <span>Share as “My Thought” (encrypted for the note owner)</span>
+            <span>Share as “My Thought” (encrypted for your selected participant)</span>
           </label>
         </div>
       )}
@@ -379,6 +387,9 @@ const CommentThread = ({
     const isReply = depth > 0;
     const isReplySelected = !isPrivate && selectedTarget?.commentId === comment.id;
     const isMyThoughtSelected = isPrivate && selectedTarget?.commentId === comment.id;
+    const canEditAction =
+      (comment.isEditableByViewer || comment.authorId === viewerId || viewerIsOwner) && !isEditing;
+    const canDeleteAction = viewerIsOwner || comment.authorId === viewerId;
 
     return (
       <li key={comment.id} className="relative space-y-2">
@@ -465,7 +476,7 @@ const CommentThread = ({
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {(comment.isEditableByViewer || comment.authorId === viewerId) && !isEditing && (
+            {canEditAction && (
               <button
                 type="button"
                 onClick={() => startEditing(comment.id, comment.content)}
@@ -479,7 +490,7 @@ const CommentThread = ({
               </button>
             )}
 
-            {(comment.isEditableByViewer || comment.authorId === viewerId) && (
+            {canDeleteAction && (
               <button
                 type="button"
                 onClick={() => void handleDelete(comment.id)}
