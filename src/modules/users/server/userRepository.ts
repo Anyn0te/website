@@ -1350,7 +1350,15 @@ export const getAggregatedNotesForUser = async (
   const viewerFollowing = new Set(viewer?.following ?? []);
   const viewerAccess = resolveAccessForUser(viewer);
 
-  const aggregated: Note[] = [];
+  const now = Date.now();
+  const aggregated: Array<{
+    note: Note;
+    recencyTier: number;
+    createdAtTime: number;
+    publicCommentCount: number;
+    loveReactions: number;
+    dislikeReactions: number;
+  }> = [];
 
   for (const user of users) {
     const authorName = user.username;
@@ -1370,7 +1378,17 @@ export const getAggregatedNotesForUser = async (
         viewerAccess,
       );
 
-      aggregated.push({
+      const createdAtTime = new Date(note.createdAt ?? 0).getTime();
+      const ageHours = Number.isFinite(createdAtTime)
+        ? Math.max(0, (now - createdAtTime) / (1000 * 60 * 60))
+        : Number.POSITIVE_INFINITY;
+      const recencyTier =
+        ageHours < 3 ? 3 :
+        ageHours < 6 ? 2 :
+        ageHours < 9 ? 1 :
+        0;
+
+      const notePayload: Note = {
         id: note.id,
         title: note.title,
         content: note.content,
@@ -1388,29 +1406,40 @@ export const getAggregatedNotesForUser = async (
         commentsLocked: note.commentsLocked ?? false,
         viewerCanModerate: viewerAccess.canModerateNotes,
         viewerRole: viewerAccess.role,
+      };
+
+      aggregated.push({
+        note: notePayload,
+        recencyTier,
+        createdAtTime,
+        publicCommentCount,
+        loveReactions: reactions.love,
+        dislikeReactions: reactions.dislike,
       });
     }
   }
 
   aggregated.sort((a, b) => {
-    const createdDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    if (createdDiff !== 0) {
-      return createdDiff;
+    if (b.recencyTier !== a.recencyTier) {
+      return b.recencyTier - a.recencyTier;
+    }
+    if (b.createdAtTime !== a.createdAtTime) {
+      return b.createdAtTime - a.createdAtTime;
     }
 
     if (b.publicCommentCount !== a.publicCommentCount) {
       return b.publicCommentCount - a.publicCommentCount;
     }
-    if (b.reactions.love !== a.reactions.love) {
-      return b.reactions.love - a.reactions.love;
+    if (b.loveReactions !== a.loveReactions) {
+      return b.loveReactions - a.loveReactions;
     }
 
-    if (b.reactions.dislike !== a.reactions.dislike) {
-      return b.reactions.dislike - a.reactions.dislike;
+    if (b.dislikeReactions !== a.dislikeReactions) {
+      return b.dislikeReactions - a.dislikeReactions;
     }
 
-    return (b.title ?? "").localeCompare(a.title ?? "");
+    return (b.note.title ?? "").localeCompare(a.note.title ?? "");
   });
 
-  return aggregated;
+  return aggregated.map((entry) => entry.note);
 };
