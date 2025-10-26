@@ -1351,7 +1351,16 @@ export const getAggregatedNotesForUser = async (
   const viewerAccess = resolveAccessForUser(viewer);
 
   const now = Date.now();
-  const aggregated: Array<{
+
+  const highlyEngaged: Array<{
+    note: Note;
+    publicCommentCount: number;
+    loveReactions: number;
+    dislikeReactions: number;
+    createdAtTime: number;
+  }> = [];
+
+  const ordinaryNotes: Array<{
     note: Note;
     recencyTier: number;
     createdAtTime: number;
@@ -1387,6 +1396,7 @@ export const getAggregatedNotesForUser = async (
         ageHours < 6 ? 2 :
         ageHours < 9 ? 1 :
         0;
+      const isHighlyEngaged = publicCommentCount >= 5 || reactions.love >= 5;
 
       const notePayload: Note = {
         id: note.id,
@@ -1408,18 +1418,41 @@ export const getAggregatedNotesForUser = async (
         viewerRole: viewerAccess.role,
       };
 
-      aggregated.push({
-        note: notePayload,
-        recencyTier,
-        createdAtTime,
-        publicCommentCount,
-        loveReactions: reactions.love,
-        dislikeReactions: reactions.dislike,
-      });
+      if (isHighlyEngaged) {
+        highlyEngaged.push({
+          note: notePayload,
+          publicCommentCount,
+          loveReactions: reactions.love,
+          dislikeReactions: reactions.dislike,
+          createdAtTime,
+        });
+      } else {
+        ordinaryNotes.push({
+          note: notePayload,
+          recencyTier,
+          createdAtTime,
+          publicCommentCount,
+          loveReactions: reactions.love,
+          dislikeReactions: reactions.dislike,
+        });
+      }
     }
   }
 
-  aggregated.sort((a, b) => {
+  highlyEngaged.sort((a, b) => {
+    if (b.publicCommentCount !== a.publicCommentCount) {
+      return b.publicCommentCount - a.publicCommentCount;
+    }
+    if (b.loveReactions !== a.loveReactions) {
+      return b.loveReactions - a.loveReactions;
+    }
+    if (b.dislikeReactions !== a.dislikeReactions) {
+      return b.dislikeReactions - a.dislikeReactions;
+    }
+    return b.createdAtTime - a.createdAtTime;
+  });
+
+  ordinaryNotes.sort((a, b) => {
     if (b.recencyTier !== a.recencyTier) {
       return b.recencyTier - a.recencyTier;
     }
@@ -1441,5 +1474,8 @@ export const getAggregatedNotesForUser = async (
     return (b.note.title ?? "").localeCompare(a.note.title ?? "");
   });
 
-  return aggregated.map((entry) => entry.note);
+  return [
+    ...highlyEngaged.map((entry) => entry.note),
+    ...ordinaryNotes.map((entry) => entry.note),
+  ];
 };
