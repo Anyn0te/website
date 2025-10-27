@@ -8,6 +8,7 @@ import CommentThread, {
   CommentSubmitPayload,
   CommentUpdatePayload,
 } from "./CommentThread";
+import AudioPlayer from "./AudioPlayer";
 
 export interface NoteUpdatePayload {
   title: string;
@@ -392,14 +393,10 @@ const ExpandedNoteModal = ({
 
               if (mediaItem.type === "audio") {
                 return (
-                  <audio
+                  <AudioPlayer 
                     key={`${activeNote.id}-audio-${index}`}
-                    controls
-                    src={mediaItem.url}
-                    className="w-full rounded-xl bg-[color:var(--color-audio-bg)] p-2 text-[color:var(--color-text-primary)]"
-                  >
-                    Your browser does not support the audio element.
-                  </audio>
+                    src={mediaItem.url} 
+                  />
                 );
               }
 
