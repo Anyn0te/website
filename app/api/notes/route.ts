@@ -236,7 +236,8 @@ export async function GET(request: NextRequest) {
       viewerId = searchParams.get("guestId") ?? request.cookies.get("anynote_guest_id")?.value ?? null;
     }
 
-    const notes = await getAggregatedNotesForUser(viewerId);
+    const sortBy = searchParams.get("sortBy") as 'date' | 'activity' | undefined;
+    const notes = await getAggregatedNotesForUser(viewerId, sortBy);
     return NextResponse.json({ notes }, { status: 200 });
   } catch (error) {
     console.error("API Read Error:", error);

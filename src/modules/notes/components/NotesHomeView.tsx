@@ -38,6 +38,8 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
     isLoading: isNotesLoading,
     error: notesError,
     reload,
+    setSortBy, 
+    sortBy,
   } = useNotesData(userId, token ?? null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isFollowPending, setIsFollowPending] = useState(false);
@@ -450,6 +452,10 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   const handleOpenCreateModal = () => {
     setIsCreateModalOpen(true);
   };
+  
+  const handleSortChange = (newSortBy: 'date' | 'activity') => {
+    setSortBy(newSortBy);
+  };
 
   const isCommentEditPending = useCallback(
     (_note: Note, commentId: string) => pendingEditCommentIds.has(commentId),
@@ -485,6 +491,30 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
             Signed in as @{profile.username}
           </p>
         )}
+        <div className="mt-4 flex justify-center space-x-3">
+          <button
+            type="button"
+            onClick={() => handleSortChange('date')}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+              sortBy === 'date'
+                ? 'bg-[color:var(--color-accent)] text-[color:var(--color-on-accent)]'
+                : 'bg-[color:var(--color-button-muted-bg)] text-[color:var(--color-text-primary)] hover:bg-[color:var(--color-neutral-button-hover-bg)]'
+            }`}
+          >
+            Newest First
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSortChange('activity')}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+              sortBy === 'activity'
+                ? 'bg-[color:var(--color-accent)] text-[color:var(--color-on-accent)]'
+                : 'bg-[color:var(--color-button-muted-bg)] text-[color:var(--color-text-primary)] hover:bg-[color:var(--color-neutral-button-hover-bg)]'
+            }`}
+          >
+            Most Recently Active
+          </button>
+        </div>
       </header>
 
       <main className="mx-auto w-full space-y-6">

@@ -1339,6 +1339,7 @@ const mapCommentsForViewer = (
 
 export const getAggregatedNotesForUser = async (
   userId?: string | null,
+  sortBy: 'date' | 'activity' = 'date', 
 ): Promise<Note[]> => {
   const users = await readAllUsers();
   let viewer = userId ? users.find((user) => user.userId === userId) ?? null : null;
@@ -1350,23 +1351,10 @@ export const getAggregatedNotesForUser = async (
   const viewerFollowing = new Set(viewer?.following ?? []);
   const viewerAccess = resolveAccessForUser(viewer);
 
-  const now = Date.now();
-
-  const highlyEngaged: Array<{
+  const allNotes: Array<{
     note: Note;
-    publicCommentCount: number;
-    loveReactions: number;
-    dislikeReactions: number;
     createdAtTime: number;
-  }> = [];
-
-  const ordinaryNotes: Array<{
-    note: Note;
-    recencyTier: number;
-    createdAtTime: number;
-    publicCommentCount: number;
-    loveReactions: number;
-    dislikeReactions: number;
+    updatedAtTime: number;
   }> = [];
 
   for (const user of users) {
@@ -1388,15 +1376,7 @@ export const getAggregatedNotesForUser = async (
       );
 
       const createdAtTime = new Date(note.createdAt ?? 0).getTime();
-      const ageHours = Number.isFinite(createdAtTime)
-        ? Math.max(0, (now - createdAtTime) / (1000 * 60 * 60))
-        : Number.POSITIVE_INFINITY;
-      const recencyTier =
-        ageHours < 3 ? 3 :
-        ageHours < 6 ? 2 :
-        ageHours < 9 ? 1 :
-        0;
-      const isHighlyEngaged = publicCommentCount >= 5 || reactions.love >= 5;
+      const updatedAtTime = new Date(note.updatedAt ?? note.createdAt ?? 0).getTime();
 
       const notePayload: Note = {
         id: note.id,
@@ -1418,64 +1398,22 @@ export const getAggregatedNotesForUser = async (
         viewerRole: viewerAccess.role,
       };
 
-      if (isHighlyEngaged) {
-        highlyEngaged.push({
-          note: notePayload,
-          publicCommentCount,
-          loveReactions: reactions.love,
-          dislikeReactions: reactions.dislike,
-          createdAtTime,
-        });
-      } else {
-        ordinaryNotes.push({
-          note: notePayload,
-          recencyTier,
-          createdAtTime,
-          publicCommentCount,
-          loveReactions: reactions.love,
-          dislikeReactions: reactions.dislike,
-        });
-      }
+      allNotes.push({
+        note: notePayload,
+        createdAtTime,
+        updatedAtTime,
+      });
     }
   }
 
-  highlyEngaged.sort((a, b) => {
-    if (b.publicCommentCount !== a.publicCommentCount) {
-      return b.publicCommentCount - a.publicCommentCount;
-    }
-    if (b.loveReactions !== a.loveReactions) {
-      return b.loveReactions - a.loveReactions;
-    }
-    if (b.dislikeReactions !== a.dislikeReactions) {
-      return b.dislikeReactions - a.dislikeReactions;
+  allNotes.sort((a, b) => {
+    if (sortBy === 'activity') {
+      if (b.updatedAtTime !== a.updatedAtTime) {
+        return b.updatedAtTime - a.updatedAtTime;
+      }
     }
     return b.createdAtTime - a.createdAtTime;
   });
 
-  ordinaryNotes.sort((a, b) => {
-    if (b.recencyTier !== a.recencyTier) {
-      return b.recencyTier - a.recencyTier;
-    }
-    if (b.createdAtTime !== a.createdAtTime) {
-      return b.createdAtTime - a.createdAtTime;
-    }
-
-    if (b.publicCommentCount !== a.publicCommentCount) {
-      return b.publicCommentCount - a.publicCommentCount;
-    }
-    if (b.loveReactions !== a.loveReactions) {
-      return b.loveReactions - a.loveReactions;
-    }
-
-    if (b.dislikeReactions !== a.dislikeReactions) {
-      return b.dislikeReactions - a.dislikeReactions;
-    }
-
-    return (b.note.title ?? "").localeCompare(a.note.title ?? "");
-  });
-
-  return [
-    ...highlyEngaged.map((entry) => entry.note),
-    ...ordinaryNotes.map((entry) => entry.note),
-  ];
+  return allNotes.map((entry) => entry.note);
 };
