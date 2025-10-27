@@ -118,7 +118,7 @@ const saveMediaFiles = async (
     const randomFragment = randomUUID().slice(0, 8);
     const baseName = slugify(uploaderSlug);
     const fileName = `${baseName}-${timestamp}-${randomFragment}.${extension}`;
-    const relativePath = `/media/${fileName}`;
+    const relativePath = `/api/media/${fileName}`;
 
     await fs.writeFile(path.join(MEDIA_DIRECTORY, fileName), fileBuffer);
     storedMedia.push({ url: relativePath, type: mediaType });
