@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken } from "@/lib/firebase/admin";
 import { setFollowingStatus } from "@/modules/users/server/userRepository";
+import { revalidatePath } from "next/cache"; 
 
 const extractTokenFromRequest = (request: NextRequest) => {
   const header = request.headers.get("authorization");
@@ -46,6 +47,10 @@ export async function POST(request: NextRequest) {
       targetUserId,
       shouldFollow
     );
+
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidatePath("/followed");
 
     return NextResponse.json(
       {
