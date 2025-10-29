@@ -26,6 +26,7 @@ interface NotificationBellProps {
   nativePermission?: NotificationPermission;
   onRequestNativePermission?: () => Promise<void>;
   authToken?: string | null;
+  viewerId?: string | null;
   onSubscriptionStateChange?: (isActive: boolean) => void;
 }
 
@@ -73,6 +74,7 @@ export const NotificationBell = ({
   onRequestNativePermission,
   anchor = "desktop",
   authToken = null,
+  viewerId = null,
   onSubscriptionStateChange,
 }: NotificationBellProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -80,6 +82,18 @@ export const NotificationBell = ({
   const [panelState, setPanelState] = useState<"closed" | "opening" | "open" | "closing">("closed");
   const [hasPushSubscription, setHasPushSubscription] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastRegistrationKeyRef = useRef<string | null>(null);
+  const previousAuthTokenRef = useRef<string | null>(authToken ?? null);
+
+  const currentRegistrationKey = useMemo(() => {
+    if (authToken) {
+      return `auth:${authToken}`;
+    }
+    if (viewerId) {
+      return `viewer:${viewerId}`;
+    }
+    return "anonymous";
+  }, [authToken, viewerId]);
   const toggleOpen = useCallback(() => {
     setIsOpen((previous) => {
       const next = !previous;
@@ -140,13 +154,16 @@ export const NotificationBell = ({
     }
 
     if (nativePermission === "granted") {
-      if (hasPushSubscription) {
+      const registrationChanged = lastRegistrationKeyRef.current !== currentRegistrationKey;
+      if (hasPushSubscription && !registrationChanged) {
         return;
       }
+
       void ensurePushSubscription(authToken)
         .then((success) => {
           if (success) {
             setHasPushSubscription(true);
+            lastRegistrationKeyRef.current = currentRegistrationKey;
           }
         })
         .catch((error) => {
@@ -157,13 +174,27 @@ export const NotificationBell = ({
 
     if (nativePermission === "denied") {
       setHasPushSubscription(false);
+      lastRegistrationKeyRef.current = null;
       void removePushSubscription(authToken).catch((error) => {
         console.error("Failed to remove push subscription:", error);
       });
     } else {
       setHasPushSubscription(false);
+      lastRegistrationKeyRef.current = null;
     }
-  }, [authToken, nativePermission, nativeReady, nativeSupport, hasPushSubscription]);
+  }, [authToken, nativePermission, nativeReady, nativeSupport, hasPushSubscription, currentRegistrationKey]);
+
+  useEffect(() => {
+    const previousToken = previousAuthTokenRef.current;
+    if (previousToken && previousToken !== authToken) {
+      void removePushSubscription(previousToken).catch((error) => {
+        console.error("Failed to remove push subscription for previous session:", error);
+      });
+      setHasPushSubscription(false);
+      lastRegistrationKeyRef.current = null;
+    }
+    previousAuthTokenRef.current = authToken ?? null;
+  }, [authToken]);
 
   useEffect(() => {
     if (typeof onSubscriptionStateChange === "function") {

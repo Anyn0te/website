@@ -377,20 +377,21 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
                 Notifications blocked
               </span>
             )}
-            <NotificationBell
-              notifications={notifications}
-              unreadCount={unreadCount}
-              isLoading={notificationsLoading}
-              onMarkAllAsRead={markAllAsRead}
-              onRefresh={refresh}
-              nativeSupport={supportsNativeNotifications}
-              nativeReady={permissionReady}
-              nativePermission={nativePermission}
-              onRequestNativePermission={handleRequestNativePermission}
-              authToken={token ?? null}
-              anchor="desktop"
-              onSubscriptionStateChange={setHasRealtimeNotifications}
-            />
+      <NotificationBell
+        notifications={notifications}
+        unreadCount={unreadCount}
+        isLoading={notificationsLoading}
+        onMarkAllAsRead={markAllAsRead}
+        onRefresh={refresh}
+        nativeSupport={supportsNativeNotifications}
+        nativeReady={permissionReady}
+        nativePermission={nativePermission}
+        onRequestNativePermission={handleRequestNativePermission}
+        authToken={token ?? null}
+        viewerId={viewerId ?? null}
+        anchor="desktop"
+        onSubscriptionStateChange={setHasRealtimeNotifications}
+      />
         </div>
       </div>
 
@@ -411,6 +412,7 @@ const BottomNav = ({ onOpenCreateModal, viewerId = null, token = null }: BottomN
           nativePermission={nativePermission}
           onRequestNativePermission={handleRequestNativePermission}
           authToken={token ?? null}
+          viewerId={viewerId ?? null}
           anchor="mobile"
           onSubscriptionStateChange={setHasRealtimeNotifications}
         />
