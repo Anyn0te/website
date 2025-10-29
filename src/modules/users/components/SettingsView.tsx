@@ -1,13 +1,24 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import BottomNav from "@/components/navigation/BottomNav";
-import CreateNoteModal from "@/modules/notes/components/CreateNoteModal";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useNotesData } from "@/modules/notes/hooks/useNotesData";
 import { useAuth } from "@/modules/auth/AuthContext";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { ThemePreference } from "../types";
 
+const BottomNav = dynamic(() => import("@/components/navigation/BottomNav"), {
+  ssr: false,
+  loading: () => null,
+});
+
+const CreateNoteModal = dynamic(
+  () => import("@/modules/notes/components/CreateNoteModal"),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
 const themeOptions: Array<{ label: string; value: ThemePreference }> = [
   { label: "System (default)", value: "system" },
   { label: "Light", value: "light" },
@@ -33,9 +44,13 @@ const SettingsView = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = useCallback(() => {
     setIsCreateModalOpen(true);
-  };
+  }, []);
+
+  const handleCloseCreateModal = useCallback(() => {
+    setIsCreateModalOpen(false);
+  }, []);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -299,7 +314,7 @@ const SettingsView = () => {
       />
       <CreateNoteModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={handleCloseCreateModal}
         onCreated={reload}
         token={token}
         userId={userId ?? ""}

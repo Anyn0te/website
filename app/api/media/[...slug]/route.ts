@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import * as fs from "fs"; 
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import * as fs from "fs";
 import path from "path";
 
-const MEDIA_DIRECTORY = path.join(process.cwd(), "public", "media");
+const MEDIA_DIRECTORY = path.resolve(process.cwd(), "public", "media");
 
 function toWebStream(nodeStream: fs.ReadStream): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
@@ -44,26 +45,28 @@ const getMimeType = (filePath: string): string => {
 
 export async function GET(
   request: NextRequest,
-  context: any 
+  context: { params: Promise<{ slug: string[] }> },
 ) {
-  const { params } = context as { params: { slug: string[] } };
+  const { slug } = await context.params;
 
   try {
-    const filename = params.slug[0]; 
-    if (!filename) {
+    if (!slug || slug.length === 0) {
       return new NextResponse("Not Found", { status: 404 });
     }
 
-    const filePath = path.join(MEDIA_DIRECTORY, filename);
+    const resolvedPath = path.resolve(MEDIA_DIRECTORY, ...slug);
+    const withinMediaDirectory =
+      resolvedPath === MEDIA_DIRECTORY ||
+      resolvedPath.startsWith(`${MEDIA_DIRECTORY}${path.sep}`);
 
-    if (!filePath.startsWith(MEDIA_DIRECTORY)) {
+    if (!withinMediaDirectory) {
       return new NextResponse("Forbidden", { status: 403 });
     }
     
-    await fs.promises.access(filePath, fs.constants.R_OK);
+    await fs.promises.access(resolvedPath, fs.constants.R_OK);
 
-    const mimeType = getMimeType(filePath);
-    const nodeStream = fs.createReadStream(filePath);
+    const mimeType = getMimeType(resolvedPath);
+    const nodeStream = fs.createReadStream(resolvedPath);
     const webStream = toWebStream(nodeStream);
 
     return new NextResponse(webStream, {

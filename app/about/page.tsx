@@ -1,13 +1,24 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
-import BottomNav from "@/components/navigation/BottomNav";
-import CreateNoteModal from "@/modules/notes/components/CreateNoteModal";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import { useCallback, useState } from "react";
 import { useAuth } from "@/modules/auth/AuthContext";
 import { useUserProfile } from "@/modules/users/hooks/useUserProfile";
-import { useNotesData } from "@/modules/notes/hooks/useNotesData";
-import Link from "next/link"; 
+
+const BottomNav = dynamic(() => import("@/components/navigation/BottomNav"), {
+  ssr: false,
+  loading: () => null,
+});
+
+const CreateNoteModal = dynamic(
+  () => import("@/modules/notes/components/CreateNoteModal"),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
 
 const contributors = [
   {
@@ -29,12 +40,15 @@ const contributors = [
 export default function AboutPage() {
   const { token } = useAuth();
   const { userId, profile } = useUserProfile();
-  const { reload } = useNotesData(userId, token ?? null); 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = useCallback(() => {
     setIsCreateModalOpen(true);
-  };
+  }, []);
+
+  const handleCloseCreateModal = useCallback(() => {
+    setIsCreateModalOpen(false);
+  }, []);
   
   return (
     <div className="min-h-screen bg-[color:var(--color-app-bg)] p-6 pb-[220px] md:pb-32 transition-colors">
@@ -109,8 +123,7 @@ export default function AboutPage() {
       />
       <CreateNoteModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreated={reload}
+        onClose={handleCloseCreateModal}
         token={token}
         userId={userId ?? ""}
         username={profile?.username ?? null}

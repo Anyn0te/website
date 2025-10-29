@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import BottomNav from "@/components/navigation/BottomNav";
+import dynamic from "next/dynamic";
 import { useNotesData } from "../hooks/useNotesData";
 import { useUserProfile } from "@/modules/users/hooks/useUserProfile";
 import { updateFollowStatus } from "@/modules/users/services/followService";
 import { useAuth } from "@/modules/auth/AuthContext";
 import NoteSection from "./NoteSection";
 import { ensureGuestIdentity } from "@/modules/users/utils/guestIdentity";
-import CreateNoteModal from "./CreateNoteModal";
 import {
   addCommentToNote,
   deleteCommentFromNote,
@@ -23,6 +22,16 @@ import type { Note, NoteReactionType } from "../types";
 interface NotesHomeViewProps {
   variant: "dashboard" | "followed" | "all" | "my";
 }
+
+const BottomNav = dynamic(() => import("@/components/navigation/BottomNav"), {
+  ssr: false,
+  loading: () => null,
+});
+
+const CreateNoteModal = dynamic(() => import("./CreateNoteModal"), {
+  ssr: false,
+  loading: () => null,
+});
 
 const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   const { token } = useAuth();
@@ -70,6 +79,14 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
   );
   const viewerRole = profile?.role ?? "user";
   const viewerCanModerateGlobally = viewerRole === "admin" || viewerRole === "moderator";
+
+  const openCreateModal = useCallback(() => {
+    setIsCreateModalOpen(true);
+  }, []);
+
+  const closeCreateModal = useCallback(() => {
+    setIsCreateModalOpen(false);
+  }, []);
 
   const myNotes = useMemo(() => {
     if (!userId) {
@@ -449,10 +466,6 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
     [resolveViewerId, token, reload, viewerCanModerateGlobally],
   );
 
-  const handleOpenCreateModal = () => {
-    setIsCreateModalOpen(true);
-  };
-  
   const handleSortChange = (newSortBy: 'date' | 'activity') => {
     setSortBy(newSortBy);
   };
@@ -571,14 +584,10 @@ const NotesHomeView = ({ variant }: NotesHomeViewProps) => {
           />
         )}
       </main>
-      <BottomNav
-        onOpenCreateModal={handleOpenCreateModal}
-        viewerId={userId}
-        token={token ?? null}
-      />
+      <BottomNav onOpenCreateModal={openCreateModal} viewerId={userId} token={token ?? null} />
       <CreateNoteModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={closeCreateModal}
         onCreated={reload}
         token={token}
         username={profile?.username ?? null}

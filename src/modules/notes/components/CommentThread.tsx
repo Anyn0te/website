@@ -74,6 +74,10 @@ const CommentThread = ({
 
   const viewerIsOwner = viewerId === noteAuthorId;
   const canComment = !noteCommentsLocked;
+  const encryptedPlaceholder = useMemo(
+    () => sanitizeHtml("Encrypted inbox message between participants."),
+    [],
+  );
 
   const { roots, lookup } = useMemo(() => {
     const map = new Map<string, ThreadNode>();
@@ -81,14 +85,11 @@ const CommentThread = ({
 
     for (const comment of comments) {
       const sanitizedContent = sanitizeHtml(comment.content ?? "");
-      const placeholderContent = sanitizeHtml(
-        "Encrypted inbox message between participants.",
-      );
       map.set(comment.id, {
         comment,
         safeContent: sanitizedContent,
         encryptedSafeContent: sanitizedContent,
-        placeholderContent,
+        placeholderContent: encryptedPlaceholder,
         children: [],
       });
     }
@@ -113,7 +114,7 @@ const CommentThread = ({
     sortNodes(rootNodes);
 
     return { roots: rootNodes, lookup: map };
-  }, [comments]);
+  }, [comments, encryptedPlaceholder]);
 
   useEffect(() => {
     setRevealedCommentIds(new Set());

@@ -1,4 +1,4 @@
-import { MouseEvent } from "react";
+import { MouseEvent, useMemo } from "react";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { Note, NoteReactionType } from "../types";
 
@@ -41,12 +41,23 @@ const NoteCard = ({
   size = "medium",
   animationDelayMs,
 }: NoteCardProps) => {
-  const safeTitle = sanitizeHtml(note.title);
-  const safeContent = sanitizeHtml(note.content);
+  const safeTitle = useMemo(() => sanitizeHtml(note.title), [note.title]);
+  const safeContent = useMemo(() => sanitizeHtml(note.content), [note.content]);
+  const mediaCounts = useMemo(() => {
+    let image = 0;
+    let audio = 0;
+    for (const mediaItem of note.media) {
+      if (mediaItem.type === "image") {
+        image += 1;
+      } else if (mediaItem.type === "audio") {
+        audio += 1;
+      }
+    }
+    return { imageCount: image, audioCount: audio };
+  }, [note.media]);
+  const { imageCount, audioCount } = mediaCounts;
   const sizeTokens = sizeStyles[size];
 
-  const imageCount = note.media.filter((media) => media.type === "image").length;
-  const audioCount = note.media.filter((media) => media.type === "audio").length;
   const displayAuthor = note.authorName ? `@${note.authorName}` : "Anonymous";
   const authorBadge = note.isOwnNote ? "You" : note.isFollowedAuthor ? "Following" : null;
   const isLoved = note.viewerReaction === "love";

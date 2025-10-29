@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Note, NoteReactionType } from "../types";
-import ExpandedNoteModal, { type NoteUpdatePayload } from "./ExpandedNoteModal";
 import NoteCard, { type NoteCardSize } from "./NoteCard";
 import type { CommentSubmitPayload } from "./CommentThread";
+import type { NoteUpdatePayload } from "./ExpandedNoteModal";
 
 interface NoteSectionProps {
   title: string;
@@ -31,6 +32,61 @@ interface NoteSectionProps {
 
 type GridSpanTier = 1 | 2 | 3 | 4 | 5 | 6;
 
+const PAGE_SIZE = 20;
+
+const ExpandedNoteModal = dynamic(() => import("./ExpandedNoteModal"), {
+  loading: () => null,
+});
+
+const stripHtml = (value: string) => value.replace(/<[^>]+>/g, "");
+
+const measureCharacters = (note: Note): number => {
+  const title = stripHtml(note.title ?? "");
+  const content = stripHtml(note.content ?? "");
+  return `${title} ${content}`.replace(/\s+/g, " ").trim().length;
+};
+
+const determineCardSize = (characters: number): NoteCardSize => {
+  if (characters <= 160) {
+    return "small";
+  }
+  if (characters <= 360) {
+    return "medium";
+  }
+  return "large";
+};
+
+const determineGridSpan = (characters: number): GridSpanTier => {
+  if (characters <= 60) {
+    return 1;
+  }
+  if (characters <= 140) {
+    return 2;
+  }
+  if (characters <= 240) {
+    return 3;
+  }
+  if (characters <= 360) {
+    return 4;
+  }
+  if (characters <= 520) {
+    return 5;
+  }
+  return 6;
+};
+
+const resolveGridClass = (tier: GridSpanTier) => {
+  const spanClasses: Record<GridSpanTier, string> = {
+    1: "sm:col-span-1 lg:col-span-2 xl:col-span-2",
+    2: "sm:col-span-2 lg:col-span-3 xl:col-span-3",
+    3: "sm:col-span-3 lg:col-span-4 xl:col-span-4",
+    4: "sm:col-span-4 lg:col-span-5 xl:col-span-5",
+    5: "sm:col-span-5 lg:col-span-6 xl:col-span-6",
+    6: "sm:col-span-6 lg:col-span-7 xl:col-span-7",
+  };
+  return spanClasses[tier];
+};
+
 const NoteSection = ({
   title,
   notes,
@@ -56,6 +112,18 @@ const NoteSection = ({
   isNoteDeletePending,
 }: NoteSectionProps) => {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [visibleCount, setVisibleCount] = useState(() => Math.min(notes.length, PAGE_SIZE));
+
+  useEffect(() => {
+    setVisibleCount(Math.min(notes.length, PAGE_SIZE));
+  }, [notes]);
+
+  const visibleNotes = useMemo(
+    () => notes.slice(0, visibleCount),
+    [notes, visibleCount],
+  );
+
+  const hasMore = notes.length > visibleCount;
 
   useEffect(() => {
     if (!selectedNote) {
@@ -77,61 +145,32 @@ const NoteSection = ({
     }
   }, [notes, selectedNote]);
 
-  const stripHtml = (value: string) => value.replace(/<[^>]+>/g, "");
+  const layoutByNoteId = useMemo(() => {
+    const layout = new Map<
+      string,
+      {
+        size: NoteCardSize;
+        className: string;
+      }
+    >();
 
-  const measureCharacters = (note: Note): number => {
-    const title = stripHtml(note.title ?? "");
-    const content = stripHtml(note.content ?? "");
-    return `${title} ${content}`.replace(/\s+/g, " ").trim().length;
-  };
+    for (const note of notes) {
+      const characters = measureCharacters(note);
+      const size = determineCardSize(characters);
+      const spanTier = determineGridSpan(characters);
+      layout.set(note.id, {
+        size,
+        className: resolveGridClass(spanTier),
+      });
+    }
 
-  const determineCardSize = (characters: number): NoteCardSize => {
-    if (characters <= 160) {
-      return "small";
-    }
-    if (characters <= 360) {
-      return "medium";
-    }
-    return "large";
-  };
+    return layout;
+  }, [notes]);
 
-  const determineGridSpan = (characters: number): GridSpanTier => {
-    if (characters <= 60) {
-      return 1;
-    }
-    if (characters <= 140) {
-      return 2;
-    }
-    if (characters <= 240) {
-      return 3;
-    }
-    if (characters <= 360) {
-      return 4;
-    }
-    if (characters <= 520) {
-      return 5;
-    }
-    return 6;
-  };
-
-  const resolveGridClass = (tier: GridSpanTier) => {
-    const spanClasses: Record<GridSpanTier, string> = {
-      1: "sm:col-span-1 lg:col-span-2 xl:col-span-2",
-      2: "sm:col-span-2 lg:col-span-3 xl:col-span-3",
-      3: "sm:col-span-3 lg:col-span-4 xl:col-span-4",
-      4: "sm:col-span-4 lg:col-span-5 xl:col-span-5",
-      5: "sm:col-span-5 lg:col-span-6 xl:col-span-6",
-      6: "sm:col-span-6 lg:col-span-7 xl:col-span-7",
-    };
-    return spanClasses[tier];
-  };
-
-  const resolveLayoutAttributes = (note: Note) => {
-    const characters = measureCharacters(note);
-    const size = determineCardSize(characters);
-    const spanTier = determineGridSpan(characters);
-    const className = resolveGridClass(spanTier);
-    return { size, className };
+  const loadMoreNotes = () => {
+    setVisibleCount((previous) =>
+      Math.min(notes.length, previous + PAGE_SIZE),
+    );
   };
 
   return (
@@ -148,30 +187,46 @@ const NoteSection = ({
             {emptyMessage ?? "No notes to display yet."}
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 transition-all duration-500 ease-in-out sm:grid-cols-6 lg:grid-cols-12 xl:grid-cols-12 grid-flow-row-dense">
-            {notes.map((note, index) => {
-              const layout = resolveLayoutAttributes(note);
+          <>
+            <div className="grid grid-cols-1 gap-4 transition-all duration-500 ease-in-out sm:grid-cols-6 lg:grid-cols-12 xl:grid-cols-12 grid-flow-row-dense">
+              {visibleNotes.map((note, index) => {
+                const layout = layoutByNoteId.get(note.id) ?? {
+                  size: "medium" as const,
+                  className: "sm:col-span-3 lg:col-span-4 xl:col-span-4",
+                };
 
-              return (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  onClick={() => setSelectedNote(note)}
-                  onReact={
-                    onReactToNote
-                      ? (reaction) => {
-                          void onReactToNote(note, reaction);
-                        }
-                      : undefined
-                  }
-                  isReacting={Boolean(isReactionPending?.(note))}
-                  className={layout.className}
-                  size={layout.size}
-                  animationDelayMs={Math.min(index * 45, 360)}
-                />
-              );
-            })}
-          </div>
+                return (
+                  <NoteCard
+                    key={note.id}
+                    note={note}
+                    onClick={() => setSelectedNote(note)}
+                    onReact={
+                      onReactToNote
+                        ? (reaction) => {
+                            void onReactToNote(note, reaction);
+                          }
+                        : undefined
+                    }
+                    isReacting={Boolean(isReactionPending?.(note))}
+                    className={layout.className}
+                    size={layout.size}
+                    animationDelayMs={Math.min(index * 45, 360)}
+                  />
+                );
+              })}
+            </div>
+            {hasMore && (
+              <div className="mt-6 flex justify-center">
+                <button
+                  type="button"
+                  onClick={loadMoreNotes}
+                  className="rounded-full border border-[color:var(--color-panel-border)] bg-[color:var(--color-panel-bg)] px-6 py-2 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-text-accent)] transition-colors hover:border-[color:var(--color-text-accent)] hover:bg-[color:var(--color-panel-hover-bg)]"
+                >
+                  Load more notes
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
 

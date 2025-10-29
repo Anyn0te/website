@@ -1,14 +1,21 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState } from "react";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { Note, NoteReactionType } from "../types";
-import CommentThread, {
-  CommentSubmitPayload,
-  CommentUpdatePayload,
-} from "./CommentThread";
-import AudioPlayer from "./AudioPlayer";
+import type { CommentSubmitPayload, CommentUpdatePayload } from "./CommentThread";
+
+const CommentThread = dynamic(() => import("./CommentThread"), {
+  ssr: false,
+  loading: () => null,
+});
+
+const AudioPlayer = dynamic(() => import("./AudioPlayer"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export interface NoteUpdatePayload {
   title: string;
@@ -155,12 +162,50 @@ const ExpandedNoteModal = ({
     };
   }, [transitionState, activeNote, onClose]);
 
+  const { safeTitle, safeContent } = useMemo(() => {
+    if (!activeNote) {
+      return { safeTitle: "", safeContent: "" };
+    }
+
+    return {
+      safeTitle: sanitizeHtml(activeNote.title),
+      safeContent: sanitizeHtml(activeNote.content),
+    };
+  }, [activeNote]);
+
+  const { imageAttachments, audioAttachments } = useMemo(() => {
+    if (!activeNote) {
+      return { imageAttachments: [], audioAttachments: [] as string[] };
+    }
+
+    const images: Array<{ url: string; alt: string }> = [];
+    const audio: string[] = [];
+
+    for (const mediaItem of activeNote.media) {
+      if (!mediaItem.url) {
+        continue;
+      }
+
+      if (mediaItem.type === "image") {
+        images.push({
+          url: mediaItem.url,
+          alt: activeNote.title || "Attached image",
+        });
+      } else if (mediaItem.type === "audio") {
+        audio.push(mediaItem.url);
+      }
+    }
+
+    return {
+      imageAttachments: images,
+      audioAttachments: audio,
+    };
+  }, [activeNote]);
+
   if (!isRendered || !activeNote) {
     return null;
   }
 
-  const safeTitle = sanitizeHtml(activeNote.title);
-  const safeContent = sanitizeHtml(activeNote.content);
   const authorLabel = activeNote.authorName ? `@${activeNote.authorName}` : "Anonymous";
   const createdAtLabel = formatDateTime(activeNote.createdAt);
   const canFollowAuthor =
@@ -371,37 +416,21 @@ const ExpandedNoteModal = ({
           )}
         </header>
 
-        {activeNote.media.length > 0 && (
+        {(imageAttachments.length > 0 || audioAttachments.length > 0) && (
           <div className="mb-6 space-y-4">
-            {activeNote.media.map((mediaItem, index) => {
-              if (!mediaItem.url) {
-                return null;
-              }
-
-              if (mediaItem.type === "image") {
-                return (
-                  <Image
-                    key={`${activeNote.id}-image-${index}`}
-                    src={mediaItem.url}
-                    alt={activeNote.title || "Anonymous Image"}
-                    className="mb-4 max-h-96 w-full rounded-lg object-contain"
-                    width={500}
-                    height={500}
-                  />
-                );
-              }
-
-              if (mediaItem.type === "audio") {
-                return (
-                  <AudioPlayer 
-                    key={`${activeNote.id}-audio-${index}`}
-                    src={mediaItem.url} 
-                  />
-                );
-              }
-
-              return null;
-            })}
+            {imageAttachments.map((image, index) => (
+              <Image
+                key={`${activeNote.id}-image-${index}`}
+                src={image.url}
+                alt={image.alt}
+                className="mb-4 max-h-96 w-full rounded-lg object-contain"
+                width={500}
+                height={500}
+              />
+            ))}
+            {audioAttachments.map((audioUrl, index) => (
+              <AudioPlayer key={`${activeNote.id}-audio-${index}`} src={audioUrl} />
+            ))}
           </div>
         )}
 
