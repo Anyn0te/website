@@ -39,13 +39,16 @@ const CreateNoteModal = ({
 
   const wordCount = useMemo(() => countWords(content), [content]);
   const canPost = Boolean(userId);
+  const hasTitle = title.trim().length > 0;
+  const hasContent = content.trim().length > 0;
+  const hasMedia = mediaFiles.length > 0;
+  const isContentMissing = !hasTitle && !hasContent && !hasMedia;
   const isButtonDisabled =
     isSubmitting ||
     !canPost ||
     !!error ||
-    wordCount === 0 ||
-    wordCount > MAX_WORD_COUNT ||
-    !content.trim();
+    isContentMissing ||
+    wordCount > MAX_WORD_COUNT; 
   const submitLabel =
     displayUsername && username && token
       ? `Post as ${username}`
@@ -286,7 +289,6 @@ const CreateNoteModal = ({
               value={content}
               onChange={handleContentChange}
               placeholder="Hmmm....title wasn't enough let's me explain more!"
-              required
               rows={8}
               className={`rounded-xl border-2 ${
                 wordCount > MAX_WORD_COUNT
