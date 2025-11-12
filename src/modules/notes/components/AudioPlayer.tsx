@@ -4,6 +4,8 @@ import React, { useRef, useState, useEffect, useCallback, useMemo, ChangeEvent }
 
 interface AudioPlayerProps {
   src: string;
+  startTime?: number;
+  endTime?: number;
 }
 
 const formatTime = (seconds: number): string => {
@@ -16,42 +18,64 @@ const formatTime = (seconds: number): string => {
   return `${minutes}:${paddedSeconds}`;
 };
 
-const AudioPlayer = ({ src }: AudioPlayerProps) => {
+const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState(startTime);
   const [duration, setDuration] = useState(0);
+
+  const effectiveEndTime = useMemo(() => {
+    return (endTime && endTime > 0) ? endTime : duration;
+  }, [endTime, duration]);
 
   const togglePlayPause = useCallback(() => {
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
+        if (audioRef.current.currentTime >= effectiveEndTime) {
+            audioRef.current.currentTime = startTime;
+        }
+        if (audioRef.current.currentTime < startTime) {
+            audioRef.current.currentTime = startTime;
+        }
         void audioRef.current.play();
       }
       setIsPlaying(!isPlaying);
     }
-  }, [isPlaying]);
+  }, [isPlaying, effectiveEndTime, startTime]);
 
   const handleLoadedMetadata = useCallback(() => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
+      if (startTime > 0) {
+        audioRef.current.currentTime = startTime;
+        setCurrentTime(startTime);
+      }
     }
-  }, []);
+  }, [startTime]);
 
   const handleTimeUpdate = useCallback(() => {
     if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+      const current = audioRef.current.currentTime;
+      setCurrentTime(current);
+
+      if (effectiveEndTime > 0 && current >= effectiveEndTime && !audioRef.current.paused) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+        audioRef.current.currentTime = startTime; 
+        setCurrentTime(startTime);
+      }
     }
-  }, []);
+  }, [effectiveEndTime, startTime]);
 
   const handleEnded = useCallback(() => {
     setIsPlaying(false);
-    setCurrentTime(0);
+    setCurrentTime(startTime);
     if (audioRef.current) {
-        audioRef.current.currentTime = 0; 
+        audioRef.current.currentTime = startTime; 
     }
-  }, []);
+  }, [startTime]);
 
   const handlePlay = useCallback(() => setIsPlaying(true), []);
   const handlePause = useCallback(() => setIsPlaying(false), []);
@@ -79,31 +103,29 @@ const AudioPlayer = ({ src }: AudioPlayerProps) => {
 
   const handleProgressChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const newTime = parseFloat(event.target.value);
+    const clampedTime = Math.max(startTime, Math.min(newTime, effectiveEndTime));
+    
     if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
+      audioRef.current.currentTime = clampedTime;
+      setCurrentTime(clampedTime);
     }
-  }, []);
+  }, [startTime, effectiveEndTime]);
+  
+  const trimmedDuration = effectiveEndTime - startTime;
+  const relativeCurrent = Math.max(0, currentTime - startTime);
   
   const progressPercent = useMemo(() => 
-    duration > 0 ? (currentTime / duration) * 100 : 0, 
-    [currentTime, duration]
+    trimmedDuration > 0 ? (relativeCurrent / trimmedDuration) * 100 : 0, 
+    [relativeCurrent, trimmedDuration]
   );
 
   const timeDisplayShort = useMemo(() => 
-    `${formatTime(currentTime)} / ${formatTime(duration)}`,
-    [currentTime, duration]
+    `${formatTime(relativeCurrent)} / ${formatTime(trimmedDuration)}`,
+    [relativeCurrent, trimmedDuration]
   );
   
   const isReady = duration > 0 && !Number.isNaN(duration);
-  const cuePoints = useMemo(() => [
-    { position: 20 }, 
-    { position: 50 },
-    { position: 75 },
-    { position: 98 },
-  ], []);
-
-
+  
   return (
     <div className="flex w-full items-center gap-3 rounded-xl bg-[color:var(--color-audio-bg)] p-3 shadow-inner">
       <audio ref={audioRef} src={src} preload="metadata" />
@@ -123,25 +145,22 @@ const AudioPlayer = ({ src }: AudioPlayerProps) => {
       </button>
 
       <div className="relative flex flex-1 items-center h-14">
-        
         <span className="text-sm font-semibold text-[color:var(--color-text-primary)] mr-4 whitespace-nowrap opacity-80">
             {isReady ? timeDisplayShort : 'Loading...'}
         </span>
 
         <div className="relative flex-1 h-3 rounded-full" aria-hidden="true">
-            
+            {/* Background Track */}
             <div className="absolute inset-0 h-full rounded-full bg-[color:var(--color-text-muted)] opacity-50" />
             
-            {cuePoints.map((cue, index) => (
-                <div 
-                    key={index}
-                    className={`absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full pointer-events-none bg-[color:var(--color-accent)]`}
-                    style={{ left: `calc(${cue.position}% - 6px)`, 
-                             opacity: cue.position < progressPercent ? 1 : 0.6 }}
-                    aria-hidden="true"
-                />
-            ))}
+            {/* Progress Fill */}
+            <div
+                className={`absolute top-1/2 -translate-y-1/2 h-full rounded-full bg-[color:var(--color-accent)]`}
+                style={{ width: `${progressPercent}%` }}
+                aria-hidden="true"
+            />
 
+            {/* Thumb */}
             <div
                 className={`absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white shadow-md pointer-events-none transition-all duration-100 border-2 border-[color:var(--color-accent)]`}
                 style={{ left: `calc(${progressPercent}% - 10px)` }}
@@ -150,8 +169,8 @@ const AudioPlayer = ({ src }: AudioPlayerProps) => {
             
             <input
                 type="range"
-                min="0"
-                max={duration}
+                min={startTime}
+                max={effectiveEndTime}
                 value={currentTime}
                 step="0.01"
                 onChange={handleProgressChange}

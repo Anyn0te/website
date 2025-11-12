@@ -206,3 +206,29 @@ body.modal-open {
   opacity: 0;
   transform: translateY(12px) scale(0.96);
 }
+
+input[type="color"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 40px;
+  height: 40px;
+  background-color: transparent;
+  border-radius: 50%;
+  border: 2px solid var(--color-divider);
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+}
+
+input[type="color"]::-moz-color-swatch {
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+}

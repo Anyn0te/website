@@ -1,4 +1,4 @@
-import { NoteReactionType, NoteReactions } from "../types";
+import { NoteCustomization, NoteReactionType, NoteReactions } from "../types";
 
 export interface CreateNotePayload {
   title: string;
@@ -6,6 +6,7 @@ export interface CreateNotePayload {
   mediaFiles: File[];
   token?: string | null;
   userId: string;
+  customization?: NoteCustomization | null;
 }
 
 export const createNote = async ({
@@ -14,11 +15,15 @@ export const createNote = async ({
   mediaFiles,
   token,
   userId,
+  customization,
 }: CreateNotePayload): Promise<void> => {
   const formData = new FormData();
   formData.append("title", title);
   formData.append("content", content);
   formData.append("userId", userId);
+  if (customization) {
+    formData.append("customizationData", JSON.stringify(customization));
+  }
 
   for (const file of mediaFiles) {
     formData.append("mediaFiles", file);

@@ -11,7 +11,7 @@ import {
   getOrCreateUser,
   updateNoteForUser,
 } from "@/modules/users/server/userRepository";
-import { NoteMedia, NoteMediaType, NoteVisibility, StoredNote } from "@/modules/notes/types";
+import { NoteMedia, NoteMediaType, NoteVisibility, StoredNote, NoteCustomization } from "@/modules/notes/types";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_WORD_COUNT = 1000;
@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
     const rawTitle = (formData.get("title") as string | null) ?? "";
     const content = (formData.get("content") as string | null) ?? "";
     const mediaFiles = formData.getAll("mediaFiles") as File[];
+    const customizationData = (formData.get("customizationData") as string | null) ?? null;
 
     let userId: string | null = null;
     if (token) {
@@ -154,20 +155,35 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await getOrCreateUser(userId);
-    const wordCount = countWords(content);
+    
+    const trimmedTitle = rawTitle.trim();
+    const trimmedContent = content.trim();
+    const wordCount = countWords(trimmedContent);
 
-    if (!content || wordCount === 0) {
+    const hasTitle = trimmedTitle.length > 0;
+    const hasContent = trimmedContent.length > 0;
+    const hasMedia = mediaFiles.length > 0;
+    if (!hasTitle && !hasContent && !hasMedia) {
       return NextResponse.json(
-        { error: "Note content is required." },
+        { error: "A note must contain a title, content, or media." },
         { status: 400 }
       );
     }
 
-    if (wordCount > MAX_WORD_COUNT) {
+    if (hasContent && wordCount > MAX_WORD_COUNT) {
       return NextResponse.json(
         { error: `Note content exceeds the ${MAX_WORD_COUNT} word limit.` },
         { status: 400 }
       );
+    }
+
+    let customization: NoteCustomization | null = null;
+    if (customizationData) {
+      try {
+        customization = JSON.parse(customizationData);
+      } catch {
+        customization = null;
+      }
     }
 
     const visibility: NoteVisibility =
@@ -178,20 +194,21 @@ export async function POST(request: NextRequest) {
     const timestamp = new Date().toISOString();
     const newNote: StoredNote = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      title: rawTitle.trim() || "Untitled Note",
-      content,
+      title: trimmedTitle,
+      content: trimmedContent,
       visibility,
       media: storedMedia,
       createdAt: timestamp,
       updatedAt: timestamp,
-    reactions: {
-      love: 0,
-      dislike: 0,
-    },
-    reactionMap: {},
-    comments: [],
-    commentsLocked: false,
-  };
+      reactions: {
+        love: 0,
+        dislike: 0,
+      },
+      reactionMap: {},
+      comments: [],
+      commentsLocked: false,
+      customization,
+    };
 
     await appendNoteToUser(userId, newNote);
     revalidatePath("/");

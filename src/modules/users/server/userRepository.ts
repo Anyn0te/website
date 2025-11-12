@@ -9,6 +9,7 @@ import {
   NoteReactions,
   StoredNote,
   StoredNoteComment,
+  NoteCustomization,
 } from "@/modules/notes/types";
 import { StoredNotification } from "@/modules/notifications/types";
 import {
@@ -434,6 +435,7 @@ const normalizeStoredNote = (note: StoredNote, ownerId: string): StoredNote => {
     reactionMap: normalizedReactionMap,
     comments: normalizedComments,
     commentsLocked,
+    customization: (note as { customization?: NoteCustomization | null }).customization ?? null,
   };
 };
 
@@ -1396,6 +1398,7 @@ export const getAggregatedNotesForUser = async (
         commentsLocked: note.commentsLocked ?? false,
         viewerCanModerate: viewerAccess.canModerateNotes,
         viewerRole: viewerAccess.role,
+        customization: note.customization ?? null,
       };
 
       allNotes.push({

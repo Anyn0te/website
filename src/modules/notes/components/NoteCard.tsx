@@ -43,6 +43,8 @@ const NoteCard = ({
 }: NoteCardProps) => {
   const safeTitle = useMemo(() => sanitizeHtml(note.title), [note.title]);
   const safeContent = useMemo(() => sanitizeHtml(note.content), [note.content]);
+  const displayTitle = safeTitle.trim() ? safeTitle : "<em>Untitled Note</em>";
+
   const mediaCounts = useMemo(() => {
     let image = 0;
     let audio = 0;
@@ -57,6 +59,21 @@ const NoteCard = ({
   }, [note.media]);
   const { imageCount, audioCount } = mediaCounts;
   const sizeTokens = sizeStyles[size];
+
+  const { customization } = note;
+        
+  const cardStyle: React.CSSProperties = {
+    backgroundColor: customization?.cardBackground || undefined,
+  };
+
+  const bodyStyle: React.CSSProperties = {
+    backgroundColor: customization?.cardColor || undefined,
+  };
+
+  const textStyle: React.CSSProperties = {
+    color: customization?.textColor || undefined,
+    fontFamily: customization?.font || undefined,
+  };
 
   const displayAuthor = note.authorName ? `@${note.authorName}` : "Anonymous";
   const authorBadge = note.isOwnNote ? "You" : note.isFollowedAuthor ? "Following" : null;
@@ -86,8 +103,8 @@ const NoteCard = ({
       className={`group flex h-full w-full cursor-pointer flex-col justify-start rounded-3xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] shadow-[0_8px_20px_var(--color-glow)] transition-transform transition-shadow duration-200 hover:-translate-y-1 hover:bg-[color:var(--color-card-hover-bg)] hover:shadow-[0_12px_28px_var(--color-glow)] ${reactedWrapperClass} ${sizeTokens.wrapper} animate-fade-up ${className}`}
       style={
         animationDelayMs !== undefined
-          ? { animationDelay: `${animationDelayMs}ms` }
-          : undefined
+          ? { animationDelay: `${animationDelayMs}ms`, ...cardStyle }
+          : cardStyle
       }
     >
       <div className="flex items-center justify-between text-[color:var(--color-text-muted)]">
@@ -101,14 +118,16 @@ const NoteCard = ({
         )}
       </div>
       <h3
-        className={`overflow-hidden text-[color:var(--color-text-primary)] font-bold uppercase tracking-wide ${sizeTokens.title}`}
-        dangerouslySetInnerHTML={{ __html: safeTitle }}
+        className={`overflow-hidden text-[color:var(--color-text-primary)] font-bold uppercase tracking-wide ${sizeTokens.title} ${!safeTitle.trim() ? 'italic opacity-70' : ''}`}
+        dangerouslySetInnerHTML={{ __html: displayTitle }}
+        style={textStyle}
       />
 
-      <div className="flex-grow">
+      <div className="flex-grow p-3 rounded-lg" style={bodyStyle}>
         <p
           className={`overflow-hidden text-[color:var(--color-text-body)] ${sizeTokens.content}`}
           dangerouslySetInnerHTML={{ __html: safeContent }}
+          style={textStyle}
         />
       </div>
 

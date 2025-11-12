@@ -13,6 +13,24 @@ export interface NoteMedia {
   url?: string | null;
 }
 
+export interface MediaEdit {
+  zoom?: number;
+  panX?: number;
+  panY?: number;
+  startTime?: number;
+  endTime?: number;
+  orientation?: "landscape" | "portrait"; 
+}
+
+export interface NoteCustomization {
+  cardBackground?: string | null;
+  cardColor?: string | null;
+  textColor?: string | null;
+  font?: string | null;
+  mediaWidth?: string | null;
+  mediaEdits?: Record<string, MediaEdit>;
+}
+
 export type NoteVisibility = "anonymous" | "public";
 
 export interface StoredNoteComment {
@@ -53,6 +71,7 @@ export interface StoredNote {
   reactionMap: Record<string, NoteReactionType>;
   comments: StoredNoteComment[];
   commentsLocked: boolean;
+  customization: NoteCustomization | null;
 }
 
 export interface Note {
@@ -73,4 +92,5 @@ export interface Note {
   commentsLocked: boolean;
   viewerCanModerate: boolean;
   viewerRole: UserRole;
+  customization: NoteCustomization | null;
 }

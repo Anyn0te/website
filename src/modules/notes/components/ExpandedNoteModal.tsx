@@ -4,7 +4,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
-import { Note, NoteReactionType } from "../types";
+import { Note, NoteReactionType, NoteCustomization } from "../types";
 import type { CommentSubmitPayload, CommentUpdatePayload } from "./CommentThread";
 
 const CommentThread = dynamic(() => import("./CommentThread"), {
@@ -167,34 +167,61 @@ const ExpandedNoteModal = ({
       return { safeTitle: "", safeContent: "" };
     }
 
+    const title = sanitizeHtml(activeNote.title);
+    const displayTitle = title.trim() ? title : "<em>Untitled Note</em>";
+
     return {
-      safeTitle: sanitizeHtml(activeNote.title),
+      safeTitle: displayTitle,
       safeContent: sanitizeHtml(activeNote.content),
     };
   }, [activeNote]);
 
+  const customization = activeNote?.customization;
+
+  const cardStyle: React.CSSProperties = {
+    backgroundColor: customization?.cardBackground || undefined,
+  };
+
+  const bodyStyle: React.CSSProperties = {
+    backgroundColor: customization?.cardColor || undefined,
+  };
+
+  const textStyle: React.CSSProperties = {
+    color: customization?.textColor || undefined,
+    fontFamily: customization?.font || undefined,
+  };
+
+  const titleStyle: React.CSSProperties = {
+    ...textStyle,
+    color: customization?.textColor || undefined,
+  };
+
   const { imageAttachments, audioAttachments } = useMemo(() => {
     if (!activeNote) {
-      return { imageAttachments: [], audioAttachments: [] as string[] };
+      return { imageAttachments: [], audioAttachments: [] };
     }
 
-    const images: Array<{ url: string; alt: string }> = [];
-    const audio: string[] = [];
+    const images: Array<{ url: string; alt: string; originalIndex: number }> = [];
+    const audio: Array<{ url: string; originalIndex: number }> = [];
 
-    for (const mediaItem of activeNote.media) {
+    activeNote.media.forEach((mediaItem, index) => {
       if (!mediaItem.url) {
-        continue;
+        return;
       }
 
       if (mediaItem.type === "image") {
         images.push({
           url: mediaItem.url,
           alt: activeNote.title || "Attached image",
+          originalIndex: index,
         });
       } else if (mediaItem.type === "audio") {
-        audio.push(mediaItem.url);
+        audio.push({
+          url: mediaItem.url,
+          originalIndex: index,
+        });
       }
-    }
+    });
 
     return {
       imageAttachments: images,
@@ -335,6 +362,7 @@ const ExpandedNoteModal = ({
         className={`modal-surface relative z-50 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[color:var(--color-panel-border)] bg-[color:var(--color-modal-bg)] p-6 shadow-[0_16px_32px_var(--color-glow)] transition-colors ${wrapperReactionClass}`}
         data-state={transitionState}
         onClick={(event) => event.stopPropagation()}
+        style={cardStyle}
       >
         <button
           onClick={onClose}
@@ -352,6 +380,7 @@ const ExpandedNoteModal = ({
             <h2
               className="text-3xl font-extrabold text-[color:var(--color-text-primary)]"
               dangerouslySetInnerHTML={{ __html: safeTitle }}
+              style={titleStyle}
             />
           </div>
 
@@ -418,19 +447,52 @@ const ExpandedNoteModal = ({
 
         {(imageAttachments.length > 0 || audioAttachments.length > 0) && (
           <div className="mb-6 space-y-4">
-            {imageAttachments.map((image, index) => (
-              <Image
-                key={`${activeNote.id}-image-${index}`}
-                src={image.url}
-                alt={image.alt}
-                className="mb-4 max-h-96 w-full rounded-lg object-contain"
-                width={500}
-                height={500}
-              />
-            ))}
-            {audioAttachments.map((audioUrl, index) => (
-              <AudioPlayer key={`${activeNote.id}-audio-${index}`} src={audioUrl} />
-            ))}
+            {imageAttachments.map((image) => {
+              const edit = customization?.mediaEdits?.[image.originalIndex.toString()] || {};
+              const transformStyle = edit.zoom 
+                ? `scale(${edit.zoom}) translate(${edit.panX || 0}px, ${edit.panY || 0}px)` 
+                : undefined;
+              
+              const isLandscape = edit.orientation === 'landscape';
+              const aspectRatioStyle = edit.orientation 
+                ? { aspectRatio: isLandscape ? '4/3' : '3/4' } 
+                : {};
+
+              return (
+                <div 
+                  key={`${activeNote.id}-image-${image.originalIndex}`} 
+                  className="mb-4 w-full rounded-lg overflow-hidden flex items-center justify-center bg-black"
+                  style={{ 
+                      ...aspectRatioStyle,
+                      maxHeight: !edit.orientation ? '24rem' : undefined 
+                  }}
+                >
+                  <Image
+                    src={image.url}
+                    alt={image.alt}
+                    width={800}
+                    height={600}
+                    unoptimized 
+                    className="w-full h-full object-contain transition-transform duration-200"
+                    style={{ 
+                      transform: transformStyle, 
+                      transformOrigin: 'center',
+                    }}
+                  />
+                </div>
+              );
+            })}
+            {audioAttachments.map((audioItem) => {
+              const edit = customization?.mediaEdits?.[audioItem.originalIndex.toString()] || {};
+              return (
+                <AudioPlayer 
+                  key={`${activeNote.id}-audio-${audioItem.originalIndex}`} 
+                  src={audioItem.url} 
+                  startTime={edit.startTime}
+                  endTime={edit.endTime}
+                />
+              );
+            })}
           </div>
         )}
 
@@ -493,10 +555,14 @@ const ExpandedNoteModal = ({
             </div>
           </form>
         ) : (
-          <div className="rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-5 text-[color:var(--color-text-primary)]">
+          <div 
+            className="rounded-2xl border border-[color:var(--color-card-border)] bg-[color:var(--color-card-bg)] p-5 text-[color:var(--color-text-primary)]"
+            style={bodyStyle}
+          >
             <p
               className="text-base leading-relaxed"
               dangerouslySetInnerHTML={{ __html: safeContent }}
+              style={textStyle}
             />
           </div>
         )}
