@@ -9,12 +9,15 @@
     "start:standalone": "node scripts/run-next.js start",
     "lint": "next lint",
     "pm2:stop": "pm2 stop anyn0te-web && pm2 delete anyn0te-web",
-    "permission": "node scripts/managePermissions.mjs"
+    "permission": "node scripts/managePermissions.mjs",
+    "migrate:export": "node scripts/export-data.js",
+    "migrate:import": "node scripts/import-data.js"
   },
   "dependencies": {
     "dompurify": "^3.3.0",
     "firebase": "^12.4.0",
     "firebase-admin": "^13.5.0",
+    "mysql2": "^3.6.5",
     "next": "15.4.4",
     "pm2": "^5.4.2",
     "postcss": "^8.5.6",
