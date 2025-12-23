@@ -153,7 +153,7 @@ const getUserDetails = async (userId: string): Promise<UserRecord | null> => {
 export const getOrCreateUser = async (userId: string): Promise<UserRecord> => {
     let user = await getUserDetails(userId);
     if (!user) {
-        await pool.query("INSERT INTO users (id, role, theme_preference) VALUES (?, 'anonymous', 'system')", [userId]);
+        await pool.query("INSERT IGNORE INTO users (id, role, theme_preference) VALUES (?, 'anonymous', 'system')", [userId]);
         user = await getUserDetails(userId);
     }
     if (!user) throw new Error("Failed to create user");
