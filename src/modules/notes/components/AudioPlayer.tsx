@@ -21,7 +21,10 @@ const formatTime = (seconds: number): string => {
 const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+
+  // Use a ref for dragging state to avoid re-creating the timeUpdate handler
+  const isDraggingRef = useRef(false);
+
   const [currentTime, setCurrentTime] = useState(startTime);
   const [duration, setDuration] = useState(0);
 
@@ -59,7 +62,9 @@ const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
   const handleTimeUpdate = useCallback(() => {
     if (audioRef.current) {
       const current = audioRef.current.currentTime;
-      if (!isDragging) {
+
+      // Check ref directly - no dependency needed
+      if (!isDraggingRef.current) {
         setCurrentTime(current);
       }
 
@@ -67,10 +72,10 @@ const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
         audioRef.current.pause();
         setIsPlaying(false);
         audioRef.current.currentTime = startTime;
-        if (!isDragging) setCurrentTime(startTime);
+        if (!isDraggingRef.current) setCurrentTime(startTime);
       }
     }
-  }, [effectiveEndTime, startTime, isDragging]);
+  }, [effectiveEndTime, startTime]);
 
   const handleEnded = useCallback(() => {
     setIsPlaying(false);
@@ -138,8 +143,8 @@ const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
         onClick={togglePlayPause}
         disabled={!isReady}
         className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-colors ${isPlaying
-          ? 'bg-[color:var(--color-accent-hover)]'
-          : 'bg-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-hover)]'
+            ? 'bg-[color:var(--color-accent-hover)]'
+            : 'bg-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-hover)]'
           } text-[color:var(--color-on-accent)] focus:outline-none flex-shrink-0`}
         aria-label={isPlaying ? 'Pause' : 'Play'}
       >
@@ -176,10 +181,10 @@ const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
             value={currentTime}
             step="0.01"
             onChange={handleProgressChange}
-            onMouseDown={() => setIsDragging(true)}
-            onMouseUp={() => setIsDragging(false)}
-            onTouchStart={() => setIsDragging(true)}
-            onTouchEnd={() => setIsDragging(false)}
+            onMouseDown={() => { isDraggingRef.current = true; }}
+            onMouseUp={() => { isDraggingRef.current = false; }}
+            onTouchStart={() => { isDraggingRef.current = true; }}
+            onTouchEnd={() => { isDraggingRef.current = false; }}
             disabled={!isReady}
             className="absolute inset-0 z-10 w-full h-full opacity-0 appearance-none cursor-pointer"
             aria-label="Audio progress slider"
