@@ -46,7 +46,7 @@ const getNoteById = async (noteId: string): Promise<StoredNote | null> => {
     const reactions = await fetchNoteReactions(noteId);
     const reactionMap = await fetchNoteReactionMap(noteId);
 
-    const [mediaRows] = await pool.query<RowDataPacket[]>("SELECT media_url, media_type FROM note_media WHERE note_id = ?", [noteId]);
+    const [mediaRows] = await pool.query<RowDataPacket[]>("SELECT media_url, media_type FROM note_media WHERE note_id = ? ORDER BY id ASC", [noteId]);
 
     const [commentRows] = await pool.query<RowDataPacket[]>("SELECT * FROM comments WHERE note_id = ?", [noteId]);
 

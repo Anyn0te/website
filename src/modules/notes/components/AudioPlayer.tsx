@@ -21,6 +21,7 @@ const formatTime = (seconds: number): string => {
 const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [currentTime, setCurrentTime] = useState(startTime);
   const [duration, setDuration] = useState(0);
 
@@ -34,10 +35,10 @@ const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
         audioRef.current.pause();
       } else {
         if (audioRef.current.currentTime >= effectiveEndTime) {
-            audioRef.current.currentTime = startTime;
+          audioRef.current.currentTime = startTime;
         }
         if (audioRef.current.currentTime < startTime) {
-            audioRef.current.currentTime = startTime;
+          audioRef.current.currentTime = startTime;
         }
         void audioRef.current.play();
       }
@@ -58,22 +59,24 @@ const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
   const handleTimeUpdate = useCallback(() => {
     if (audioRef.current) {
       const current = audioRef.current.currentTime;
-      setCurrentTime(current);
+      if (!isDragging) {
+        setCurrentTime(current);
+      }
 
       if (effectiveEndTime > 0 && current >= effectiveEndTime && !audioRef.current.paused) {
         audioRef.current.pause();
         setIsPlaying(false);
-        audioRef.current.currentTime = startTime; 
-        setCurrentTime(startTime);
+        audioRef.current.currentTime = startTime;
+        if (!isDragging) setCurrentTime(startTime);
       }
     }
-  }, [effectiveEndTime, startTime]);
+  }, [effectiveEndTime, startTime, isDragging]);
 
   const handleEnded = useCallback(() => {
     setIsPlaying(false);
     setCurrentTime(startTime);
     if (audioRef.current) {
-        audioRef.current.currentTime = startTime; 
+      audioRef.current.currentTime = startTime;
     }
   }, [startTime]);
 
@@ -104,41 +107,40 @@ const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
   const handleProgressChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const newTime = parseFloat(event.target.value);
     const clampedTime = Math.max(startTime, Math.min(newTime, effectiveEndTime));
-    
+
     if (audioRef.current) {
       audioRef.current.currentTime = clampedTime;
       setCurrentTime(clampedTime);
     }
   }, [startTime, effectiveEndTime]);
-  
+
   const trimmedDuration = effectiveEndTime - startTime;
   const relativeCurrent = Math.max(0, currentTime - startTime);
-  
-  const progressPercent = useMemo(() => 
-    trimmedDuration > 0 ? (relativeCurrent / trimmedDuration) * 100 : 0, 
+
+  const progressPercent = useMemo(() =>
+    trimmedDuration > 0 ? (relativeCurrent / trimmedDuration) * 100 : 0,
     [relativeCurrent, trimmedDuration]
   );
 
-  const timeDisplayShort = useMemo(() => 
+  const timeDisplayShort = useMemo(() =>
     `${formatTime(relativeCurrent)} / ${formatTime(trimmedDuration)}`,
     [relativeCurrent, trimmedDuration]
   );
-  
+
   const isReady = duration > 0 && !Number.isNaN(duration);
-  
+
   return (
     <div className="flex w-full items-center gap-3 rounded-xl bg-[color:var(--color-audio-bg)] p-3 shadow-inner">
       <audio ref={audioRef} src={src} preload="metadata" />
-      
+
       <button
         type="button"
         onClick={togglePlayPause}
         disabled={!isReady}
-        className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-colors ${
-            isPlaying 
-                ? 'bg-[color:var(--color-accent-hover)]' 
-                : 'bg-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-hover)]'
-        } text-[color:var(--color-on-accent)] focus:outline-none flex-shrink-0`}
+        className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-colors ${isPlaying
+          ? 'bg-[color:var(--color-accent-hover)]'
+          : 'bg-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-hover)]'
+          } text-[color:var(--color-on-accent)] focus:outline-none flex-shrink-0`}
         aria-label={isPlaying ? 'Pause' : 'Play'}
       >
         <i className={`bi bi-${isPlaying ? 'pause-fill' : 'play-fill'} text-xl`} aria-hidden="true" />
@@ -146,38 +148,42 @@ const AudioPlayer = ({ src, startTime = 0, endTime }: AudioPlayerProps) => {
 
       <div className="relative flex flex-1 items-center h-14">
         <span className="text-sm font-semibold text-[color:var(--color-text-primary)] mr-4 whitespace-nowrap opacity-80">
-            {isReady ? timeDisplayShort : 'Loading...'}
+          {isReady ? timeDisplayShort : 'Loading...'}
         </span>
 
         <div className="relative flex-1 h-3 rounded-full" aria-hidden="true">
-            {/* Background Track */}
-            <div className="absolute inset-0 h-full rounded-full bg-[color:var(--color-text-muted)] opacity-50" />
-            
-            {/* Progress Fill */}
-            <div
-                className={`absolute top-1/2 -translate-y-1/2 h-full rounded-full bg-[color:var(--color-accent)]`}
-                style={{ width: `${progressPercent}%` }}
-                aria-hidden="true"
-            />
+          {/* Background Track */}
+          <div className="absolute inset-0 h-full rounded-full bg-[color:var(--color-text-muted)] opacity-50" />
 
-            {/* Thumb */}
-            <div
-                className={`absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white shadow-md pointer-events-none transition-all duration-100 border-2 border-[color:var(--color-accent)]`}
-                style={{ left: `calc(${progressPercent}% - 10px)` }}
-                aria-hidden="true"
-            />
-            
-            <input
-                type="range"
-                min={startTime}
-                max={effectiveEndTime}
-                value={currentTime}
-                step="0.01"
-                onChange={handleProgressChange}
-                disabled={!isReady}
-                className="absolute inset-0 z-10 w-full h-full opacity-0 appearance-none cursor-pointer"
-                aria-label="Audio progress slider"
-            />
+          {/* Progress Fill */}
+          <div
+            className={`absolute top-1/2 -translate-y-1/2 h-full rounded-full bg-[color:var(--color-accent)]`}
+            style={{ width: `${progressPercent}%` }}
+            aria-hidden="true"
+          />
+
+          {/* Thumb */}
+          <div
+            className={`absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white shadow-md pointer-events-none transition-all duration-100 border-2 border-[color:var(--color-accent)]`}
+            style={{ left: `calc(${progressPercent}% - 10px)` }}
+            aria-hidden="true"
+          />
+
+          <input
+            type="range"
+            min={startTime}
+            max={effectiveEndTime}
+            value={currentTime}
+            step="0.01"
+            onChange={handleProgressChange}
+            onMouseDown={() => setIsDragging(true)}
+            onMouseUp={() => setIsDragging(false)}
+            onTouchStart={() => setIsDragging(true)}
+            onTouchEnd={() => setIsDragging(false)}
+            disabled={!isReady}
+            className="absolute inset-0 z-10 w-full h-full opacity-0 appearance-none cursor-pointer"
+            aria-label="Audio progress slider"
+          />
         </div>
       </div>
     </div>
