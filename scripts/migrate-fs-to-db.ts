@@ -12,6 +12,18 @@ import { StoredNote } from '../src/modules/notes/types';
 const STORAGE_DIR = path.join(process.cwd(), 'storage', 'users');
 
 async function migrate() {
+    console.log("CWD:", process.cwd());
+    try {
+        await fs.access('.env.local');
+        console.log(".env.local found");
+    } catch {
+        console.log(".env.local NOT found");
+    }
+
+    // Debug ENV
+    console.log("DB_USER from env:", process.env.DB_USER);
+    console.log("DB_HOST from env:", process.env.DB_HOST);
+
     console.log("Starting migration from FS to DB...");
 
     // DYNAMIC IMPORT REQUIRED:
