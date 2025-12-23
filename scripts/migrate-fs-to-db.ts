@@ -31,6 +31,18 @@ async function migrate() {
     // is initialized with default (empty) environment variables because imports are hoisted.
     const pool = (await import('../lib/db')).default;
 
+    // Helper to ensure a referenced user exists (stub if not yet migrated)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async function ensureUserExists(connection: any, userId: string) {
+        // Insert a stub user if expected user doesn't exist
+        // If they exist (fully or stub), IGNORE
+        // When their actual JSON file is processed, it will UPDATE this stub with real data
+        await connection.query(
+            "INSERT IGNORE INTO users (id, role, theme_preference, created_at, updated_at) VALUES (?, 'anonymous', 'system', NOW(), NOW())",
+            [userId]
+        );
+    }
+
     try {
         await fs.access(STORAGE_DIR);
     } catch {
@@ -142,6 +154,7 @@ async function migrate() {
                         // Note Reactions (Stored in reactionMap)
                         if (note.reactionMap) {
                             for (const [reactorId, reaction] of Object.entries(note.reactionMap)) {
+                                await ensureUserExists(connection, reactorId);
                                 await connection.query(
                                     `INSERT INTO note_reactions (note_id, user_id, reaction)
                           VALUES (?, ?, ?)
@@ -155,6 +168,8 @@ async function migrate() {
                         // Comments
                         if (note.comments) {
                             for (const comment of note.comments) {
+                                await ensureUserExists(connection, comment.authorId);
+
                                 await connection.query(
                                     `INSERT INTO comments (id, note_id, author_id, author_name, content, is_private, reply_to_comment_id, created_at, updated_at)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -175,6 +190,7 @@ async function migrate() {
 
                                 if (comment.isPrivate && comment.participants) {
                                     for (const pid of comment.participants) {
+                                        await ensureUserExists(connection, pid);
                                         await connection.query(
                                             "INSERT IGNORE INTO comment_participants (comment_id, user_id) VALUES (?, ?)",
                                             [comment.id, pid]
@@ -189,7 +205,8 @@ async function migrate() {
                 // 4. Notifications
                 if (user.notifications && user.notifications.length > 0) {
                     for (const notif of user.notifications) {
-                        // Try to avoid duplicates? ID should be unique.
+                        await ensureUserExists(connection, notif.actorId);
+
                         await connection.query(
                             `INSERT IGNORE INTO notifications (id, user_id, type, note_id, note_title, actor_id, actor_name, reaction, comment_id, is_private, is_read, created_at)
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -215,6 +232,7 @@ async function migrate() {
                 // 5. Following
                 if (user.following && user.following.length > 0) {
                     for (const followingId of user.following) {
+                        await ensureUserExists(connection, followingId);
                         await connection.query(
                             "INSERT IGNORE INTO user_follows (follower_id, following_id) VALUES (?, ?)",
                             [user.userId, followingId]
