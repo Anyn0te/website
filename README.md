@@ -1,51 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# anyn0te: Anonymous, Encrypted Note Sharing
 
-## Getting Started
+**anyn0te** is an open-source platform designed for anonymous note sharing.  
+Our core mission is to provide a space where users can post thoughts, ideas, and media without fear of personal identification or long-term data retention. **Privacy and security**, including encrypted communication, are built into the core design.
 
-First, run the development server:
+---
+
+## 🌟 Key Features
+
+- **Total Anonymity:** Post content without creating a permanent account or revealing identity.
+- **Encrypted Comments (PMs):** Communicate privately regarding a note using an encrypted, personal message-like system.
+- **Intuitive Note Editor:** A dedicated editor interface for creating and managing content.
+- **Advanced Engagement Logic:** Post visibility and reach are dynamically managed based on time decay and user reactions/engagement.
+- **Real-time Notifications:** A robust notification system for updates on user posts and interactions.
+- **Responsive UI:** A clean, mobile-first design with modern animations and theming support.
+
+---
+
+## 🚀 Getting Started
+
+These instructions will get you a copy of the project up and running on your local machine for development and testing.
+
+### **Prerequisites**
+
+You need the following installed:
+
+- Node.js (LTS recommended)
+- npm or yarn
+
+---
+
+## Installation
+
+### **1. Clone the repository**
+
+```bash
+git clone https://github.com/Anyn0te/website anyn0te
+cd anyn0te
+```
+
+### **2. Install dependencies**
+
+```bash
+npm install
+# or
+yarn install
+```
+
+### **3. Configuration**
+
+The application supports running on a specified port using a `.env` file.
+Create a `.env` file in the root directory to define environment variables such as:
+
+- Database connection URL
+- Media serving configuration
+- App port
+
+### **4. Database Setup**
+
+The project requires a database (based on the new migration system).
+Ensure it is running and configured through your `.env` environment variables.
+
+---
+
+## Running Locally
+
+To start the development server:
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The application should now be available at:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+(or whatever port you set in `.env`)
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🤝 Contributing
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+We welcome contributions!
+Please follow these rules before you make a PR
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Make useful feature, useless feature won't be accepted
+- Make meaningful commits, Messy commit that doesn't explained what changed won't accepted
+- Don't bloat
+- Security precautions, Must be taken while adding any features
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🆕 Latest Updates (v0.11.0 Highlights)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The latest version includes a major overhaul of core systems:
 
-## Push Notifications
+- **Initial Database Migration** — foundation for persistent, scalable data.
+- **Dedicated Note Editor** — UI for creating notes with optional title-only or content-only posting.
+- **Encrypted Interaction** — secure, encrypted personal messages.
+- **Dynamic Ranking** — improved post reach algorithm with time-decay logic.
+- **Revamped Media & Audio** — improved serving + new audio player.
 
-Browser/device notifications depend on Web Push and require VAPID credentials.
+---
 
-1. Generate keys by running `node scripts/generate-vapid.js`.
-2. Add the keys to your environment (for local development use `.env.local`):
-   ```
-   NEXT_PUBLIC_VAPID_PUBLIC_KEY=PASTE_PUBLIC_KEY_HERE
-   VAPID_PRIVATE_KEY=PASTE_PRIVATE_KEY_HERE
-   ```
-   (If you prefer, you can use `VAPID_PUBLIC_KEY` in place of `NEXT_PUBLIC_VAPID_PUBLIC_KEY`; the server will expose the correct public key to the client.)
-3. Restart the dev server so the new values are picked up.
+## 📜 Changelog
 
-Once configured, approving the in-app permission prompt will register the device and push notifications will be delivered through `/push-sw.js`.
+For a full breakdown of features, fixes, and changes, see the **TODO Document** in the repo.
