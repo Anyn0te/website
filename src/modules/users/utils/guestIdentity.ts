@@ -9,7 +9,7 @@ const createGuestId = (): string => {
   return `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
-const setGuestCookie = (guestId: string) => {
+export const setGuestCookie = (guestId: string) => {
   if (typeof document === "undefined") {
     return;
   }
