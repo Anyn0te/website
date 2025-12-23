@@ -2,12 +2,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import * as dotenv from 'dotenv';
-
 // Load environment variables from .env.local or .env
 dotenv.config({ path: '.env.local' });
 dotenv.config(); // Fallback to .env if .env.local doesn't exist/doesn't have everything
 
-import pool from '../lib/db';
 import { UserRecord } from '../src/modules/users/types';
 import { StoredNote } from '../src/modules/notes/types';
 
@@ -15,6 +13,11 @@ const STORAGE_DIR = path.join(process.cwd(), 'storage', 'users');
 
 async function migrate() {
     console.log("Starting migration from FS to DB...");
+
+    // DYNAMIC IMPORT REQUIRED:
+    // We must import lib/db.ts AFTER dotenv.config() runs, otherwise the connection pool
+    // is initialized with default (empty) environment variables because imports are hoisted.
+    const pool = (await import('../lib/db')).default;
 
     try {
         await fs.access(STORAGE_DIR);
@@ -126,18 +129,6 @@ async function migrate() {
 
                         // Note Reactions (Stored in reactionMap)
                         if (note.reactionMap) {
-                            // Clear existing reactions for this note to ensure sync
-                            // Actually this might clear other people's reactions if we aren't careful?
-                            // Wait, `reactionMap` contains ALL reactions for the note.
-                            // So yes, we should sync this map to the table.
-                            // BUT, if another user file is processed later, it might also have this note's reaction map?
-                            // No, `user.notes` contains notes AUTHORED by the user?
-                            // Let's check `userRepository`. `appendNoteToUser` stores `StoredNote`.
-                            // In the old system, `StoredNote` has `reactionMap`.
-                            // Yes, duplicate data problem.
-                            // Strategy: We can use `INSERT IGNORE` or `ON DUPLICATE KEY UPDATE` for reactions.
-                            // Scan entries in reactionMap: { userId: reactionType }
-
                             for (const [reactorId, reaction] of Object.entries(note.reactionMap)) {
                                 await connection.query(
                                     `INSERT INTO note_reactions (note_id, user_id, reaction)
