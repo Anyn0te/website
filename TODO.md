@@ -6,7 +6,10 @@ This document tracks current known issues, planned features, and recorded update
 
 ## 🐞 Bugs (Known Issues)
 
-These are issues confirmed but not yet fixed in the application.
+- Audio Player Broken
+  - Does let the user to use the [id: track] the tracker doesn't let the user to fast forward the audio
+- Audio Trimmer Broken
+  - Even after trimming the music is stil same
 
 ---
 
