@@ -4,7 +4,7 @@ import { getPushServerConfig } from "@/modules/notifications/server/config";
 import {
   getPushSubscriptionsForUser,
   removePushSubscriptionForUser,
-} from "@/modules/users/server/userRepository";
+} from "@/modules/notifications/server/pushRepository";
 import { PushSubscriptionRecord } from "@/modules/users/types";
 
 let configured = false;

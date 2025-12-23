@@ -3,7 +3,7 @@ import { verifyIdToken } from "@/lib/firebase/admin";
 import {
   addPushSubscriptionForUser,
   removePushSubscriptionForUser,
-} from "@/modules/users/server/userRepository";
+} from "@/modules/notifications/server/pushRepository";
 import { PushSubscriptionRecord } from "@/modules/users/types";
 
 const extractToken = (request: NextRequest) => {
