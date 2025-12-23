@@ -41,8 +41,8 @@ mysql -u root -p
 
 -- Create database and user
 CREATE DATABASE anynote_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'anynote_user'@'localhost' IDENTIFIED BY 'secure_password_here';
-GRANT ALL PRIVILEGES ON anynote_db.* TO 'anynote_user'@'localhost';
+CREATE USER 'anynote'@'localhost' IDENTIFIED BY 'anyn0te_passwd';
+GRANT ALL PRIVILEGES ON anynote_db.* TO 'anynote'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
 ```
@@ -50,7 +50,7 @@ EXIT;
 ### 3. Run Schema
 
 ```bash
-mysql -u anynote_user -p anynote_db < database-schema.sql
+mysql -u anynote -p anynote_db < database-schema.sql
 ```
 
 ## Migration Process

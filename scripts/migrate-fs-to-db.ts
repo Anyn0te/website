@@ -1,6 +1,12 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import * as dotenv from 'dotenv';
+
+// Load environment variables from .env.local or .env
+dotenv.config({ path: '.env.local' });
+dotenv.config(); // Fallback to .env if .env.local doesn't exist/doesn't have everything
+
 import pool from '../lib/db';
 import { UserRecord } from '../src/modules/users/types';
 import { StoredNote } from '../src/modules/notes/types';
